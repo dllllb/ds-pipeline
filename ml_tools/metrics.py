@@ -1,11 +1,11 @@
 import numpy as np
 
 
-# The following 3 functions have been taken from Ben Hamner's github repository
-# https://github.com/benhamner/Metrics
 def confusion_matrix(rater_a, rater_b, min_rating=None, max_rating=None):
     """
     Returns the confusion matrix between rater's ratings
+
+    The function have been taken from Ben Hamner's github repository (https://github.com/benhamner/Metrics)
     """
     assert(len(rater_a) == len(rater_b))
     if min_rating is None:
@@ -23,6 +23,8 @@ def confusion_matrix(rater_a, rater_b, min_rating=None, max_rating=None):
 def histogram(ratings, min_rating=None, max_rating=None):
     """
     Returns the counts of each type of rating that a rater made
+
+    The function have been taken from Ben Hamner's github repository (https://github.com/benhamner/Metrics)
     """
     if min_rating is None:
         min_rating = min(ratings)
@@ -52,6 +54,8 @@ def quadratic_weighted_kappa(y, y_pred):
     quadratic_weighted_kappa(X, min_rating, max_rating), where min_rating
     is the minimum possible rating, and max_rating is the maximum possible
     rating
+
+    The function have been taken from Ben Hamner's github repository (https://github.com/benhamner/Metrics)
     """
     rater_a = y
     rater_b = y_pred
@@ -84,3 +88,32 @@ def quadratic_weighted_kappa(y, y_pred):
             denominator += d * expected_count / num_scored_items
 
     return 1.0 - numerator / denominator
+
+
+def lift(target, proba, n_buckets=10):
+    import pandas as pd
+    import numpy as np
+
+    n_records = len(target)
+    bucket_sz = n_records / n_buckets
+
+    counts = np.ones(n_buckets, int)*bucket_sz
+    counts[:n_records%n_buckets] += 1
+    tops = [np.full(c, n, int) for c, n in zip(counts, range(1, n_buckets+1))]
+    tops = np.concatenate(tops)
+
+    df = pd.DataFrame({'target': target, 'proba': proba})
+    df = df.sort_values('proba', ascending=False)
+    df['top'] = tops
+    target_sum = df.groupby('top').target.sum()
+    ff = pd.DataFrame({'target_cnt': target_sum, 'cnt': counts})
+    ff['target_cnt_cum'] = ff.target_cnt.cumsum()
+    ff['cnt_cum'] = ff.cnt.cumsum()
+    ff['target_share'] = ff.target_cnt/ff.cnt
+    ff['target_share_cum'] = ff.target_cnt_cum/ff.cnt_cum
+    target_cnt = ff.target_cnt.sum()
+    target_share = float(target_cnt)/ff.cnt.sum()
+    ff['lift'] = ff.target_share/target_share
+    ff['cum_lift'] = ff.target_share_cum/target_share
+    ff['coverage'] = ff.target_cnt_cum/target_cnt
+    return ff
