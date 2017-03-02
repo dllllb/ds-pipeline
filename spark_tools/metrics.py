@@ -1,5 +1,3 @@
-
-
 def lift_splitted(sqc,
                   query,
                   target='true_target',
