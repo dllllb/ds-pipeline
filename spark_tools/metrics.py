@@ -12,11 +12,10 @@ def lift_splitted(sqc,
     Input:
         sqc - sqlContext of spark session
         query - query Dataframe with true_target, target_proba and split columns
-        cols - dictionary of necessary columns:
-           split_cols - list of columns to calculate lift independently
-           actuals - binary actual values to predict
-           charges - optional, charges
-           probs - probabilities of actual = 1
+        split_by - list of columns to calculate lift independently
+        target - binary actual values to predict
+        cost - optional, charges
+        proba - probabilities of target = 1
         n_buckets - number of buckets to bin lift function
     Output:
         pdf - pandas DataFrame with cumulative lift and coverage
