@@ -84,7 +84,7 @@ def define_data_frame(conf, sqc):
         sdf = sqc.read.format(dataset_format).load(data_path, header=True)
     elif storage == 'single-csv':
         data_path = conf['query']
-        header = conf.get_bool('header', True)
+        header = conf.get('header', 'infer')
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
         import pandas as pd
