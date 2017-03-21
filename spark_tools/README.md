@@ -43,8 +43,15 @@ Required config entries:
 - data source
 - write target
 
+Source/target storage options:
+- local (default dataset-store-format: parquet)
+- single-csv (tab as separator, dot as decimal, with header, utf-8 encoding)
+- hdfs (default dataset-store-format: parquet)
+- jdbc (database connection options to be included)
+- hive (default dataset-store-format from spark)
+
 Teradata to Hive example configuration:
-```
+``` hocon
 source: {
   storage: jdbc
   query: "(select * from db.target_table where dt = '2016-01-01') a"
@@ -59,6 +66,32 @@ target {
   storage: hive
   query: db.target_table
   write-mode: overwrite
+}
+
+spark: {
+  include "conf/spark-yarn.conf"
+  spark-prop.spark.driver.extraClassPath: "terajdbc4.jar:tdgssconfig.jar"
+  jars: [terajdbc4.jar, tdgssconfig.jar]
+}
+```
+
+csv to Teradata example:
+``` hocon
+source: {
+  storage: single-csv
+  query: 'data/table.csv'
+  header: infer
+  sep: '\t'
+  decimal: '.'
+}
+
+target {
+  storage: jdbc
+  query: db.target_table
+  write-mode: overwrite
+  conn: {
+    include "conf/db.json"
+  }
 }
 
 spark: {
@@ -97,6 +130,8 @@ Requires:
 - Spark configuration
 - data source - rewrite where clause, please
 - split_cols - columns to split by
+- target (binary) column
+- probabilities for target=1
 - n_buckets - number of tiles to display in lift function
 
 Example configuration:
@@ -142,6 +177,10 @@ Supported data storages:
 - hive: Hive query
 - hdfs: HDFS directory with files in Spark-compatible format
 - single-csv: simple CSV file
+    - distribute-by
+    - transform-sql
+    - sample
+    - limit
 
 Example JDBC data source:
 ```
@@ -160,22 +199,16 @@ Example Hive data source:
 ```
 source: {
   storage: hive
-  query: select * from db.table where business_dt = ${business_dt}
+  query: '''select * 
+              from db.table 
+             where business_dt = ${business_dt}'''
 }
 ```
 
 Example local folder target:
 ```
 target: {
-  storage: hive
-  query: select * from db.table where business_dt = ${business_dt}
-}
-```
-
-Example local folder target:
-```
-target: {
-  storage: hive
+  storage: local
   query: /some/path/some-directory
   write-mode: overwrite
 }
@@ -185,7 +218,7 @@ Example simple CSV target:
 ```
 target: {
   storage: single-csv
-  query: query: /some/path/some-file.csv 
+  query: /some/path/some-file.csv 
 }
 ```
 
@@ -225,6 +258,6 @@ source : ${model-definfition.train-dataset} {
 ## Usage from ipython:
 
 ```ipython
-%run spark_utils.py
-sqc = init_session('spark.conf')
+%run core.py
+sc, sqc = init_session('spark.conf', app = 'My App', return_context=True, overrides = 'spark.executor.instances=20,spark.executor.memory=30g')
 ```
