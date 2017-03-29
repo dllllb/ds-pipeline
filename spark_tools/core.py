@@ -84,11 +84,11 @@ def define_data_frame(conf, sqc):
         sdf = sqc.read.format(dataset_format).load(data_path, header=True)
     elif storage == 'single-csv':
         data_path = conf['query']
-        header = conf.get_bool('header', True)
+        header = conf.get('header', 'infer')
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
         import pandas as pd
-        pdf = pd.read_csv(data_path, sep=sep, header=header, decimal=decimal)
+        pdf = pd.read_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
         sdf = sqc.createDataFrame(pdf)
     elif storage == 'hive':
         sdf = sqc.sql(conf['query'])
@@ -175,7 +175,7 @@ def write(conf, sdf):
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
         pdf = sdf.toPandas()
-        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal)
+        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
 
