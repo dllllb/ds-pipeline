@@ -191,7 +191,7 @@ def prop_list(tree, prefix=list()):
     return res
 
 
-def init_spark(config, app=None):
+def init_spark(config, app=None, use_session=False):
     import os
     import sys
     from glob import glob
@@ -233,17 +233,31 @@ def init_spark(config, app=None):
     pyspark_libs = glob(os.path.join(spark_python, 'lib', '*.zip'))
     sys.path.extend(pyspark_libs)
 
-    from pyspark import SparkContext, SparkConf
-    conf = SparkConf()
-    conf.setAppName(app or config['app'])
-    props = [(k, str(v)) for k, v in prop_list(config['spark-prop']).items()]
-    conf.setAll(props)
-    sc = SparkContext(conf=conf)
+    if use_session:
+        from pyspark.sql import SparkSession
 
-    return sc
+        builder = SparkSession.builder.appName(app or config['app'])
+
+        mode_yarn = config['spark-prop.spark.master'].startswith('yarn')
+        if mode_yarn:
+            builder = builder.enableHiveSupport()
+
+        for k, v in prop_list(config['spark-prop']).items():
+            builder = builder.config(k, v)
+
+        ss = builder.getOrCreate()
+        return ss
+    else:
+        from pyspark import SparkConf, SparkContext
+        conf = SparkConf()
+        conf.setAppName(app or config['app'])
+        props = [(k, str(v)) for k, v in prop_list(config['spark-prop']).items()]
+        conf.setAll(props)
+        sc = SparkContext(conf=conf)
+        return sc
 
 
-def init_session(config, app=None, return_context=False, overrides=None):
+def init_session(config, app=None, return_context=False, overrides=None, use_session=False):
     if isinstance(config, str):
         import os
         from pyhocon import ConfigFactory
@@ -259,25 +273,28 @@ def init_session(config, app=None, return_context=False, overrides=None):
     else:
         conf = config
 
-    sc = init_spark(conf, app)
+    res = init_spark(conf, app, use_session)
 
-    mode_yarn = conf['spark-prop.spark.master'].startswith('yarn')
-
-    if mode_yarn:
-        from pyspark.sql import HiveContext
-        sqc = HiveContext(sc)
-
-        if 'hive-prop' in conf:
-            for k, v in prop_list(conf['hive-prop']).items():
-                sqc.setConf(k, str(v))
+    if use_session:
+        return res
     else:
-        from pyspark.sql import SQLContext
-        sqc = SQLContext(sc)
+        mode_yarn = conf['spark-prop.spark.master'].startswith('yarn')
 
-    if return_context:
-        return sc, sqc
-    else:
-        return sqc
+        if mode_yarn:
+            from pyspark.sql import HiveContext
+            sqc = HiveContext(res)
+
+            if 'hive-prop' in conf:
+                for k, v in prop_list(conf['hive-prop']).items():
+                    sqc.setConf(k, str(v))
+        else:
+            from pyspark.sql import SQLContext
+            sqc = SQLContext(res)
+
+        if return_context:
+            return res, sqc
+        else:
+            return sqc
 
 
 def jdbc_load(
