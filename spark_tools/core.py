@@ -237,8 +237,6 @@ def init_spark(config, app=None, use_session=False):
 
     mode_yarn = config['spark-prop.spark.master'].startswith('yarn')
 
-    mode_local = config['spark-prop.spark.master'].startswith('local')
-
     if mode_yarn:
         # pyspark .zip distribution flag is set only if spark-submit have master=yarn in command-line arguments
         # see spark.yarn.isPython conf property setting code
