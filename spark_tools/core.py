@@ -203,7 +203,17 @@ def init_spark(config, app=None, use_session=False):
         os.environ['SPARK_CONF_DIR'] = config['spark-conf-dir']
 
     if 'pyspark-python' in config:
+        # Set python interpreter on both driver and workers
         os.environ['PYSPARK_PYTHON'] = config['pyspark-python']
+
+    if 'yarn-conf-dir' in config:
+        # Hadoop YARN configuration
+        os.environ['YARN_CONF_DIR'] = config['yarn-conf-dir']
+
+    if 'spark-classpath' in config:
+        # can be used to use external folder with Hive configuration
+        # e. g. spark-classpath='/etc/hive/conf.cloudera.hive1'
+        os.environ['SPARK_CLASSPATH'] = config['spark-classpath']
 
     submit_args = []
 
@@ -225,7 +235,21 @@ def init_spark(config, app=None, use_session=False):
             jars = [jars]
         submit_args.extend(["--jars", ','.join(jars)])
 
-    submit_args.append("pyspark-shell")
+    mode_yarn = config['spark-prop.spark.master'].startswith('yarn')
+
+    mode_local = config['spark-prop.spark.master'].startswith('local')
+
+    if mode_yarn:
+        # pyspark .zip distribution flag is set only if spark-submit have master=yarn in command-line arguments
+        # see spark.yarn.isPython conf property setting code
+        # in org.apache.spark.deploy.SparkSubmit#prepareSubmitEnvironment
+        submit_args.extend(['--master', 'yarn'])
+
+    # pyspark .zip distribution flag is set only if spark-submit have pyspark-shell or .py as positional argument
+    # see spark.yarn.isPython conf property setting code
+    # in org.apache.spark.deploy.SparkSubmit#prepareSubmitEnvironment
+    submit_args.append('pyspark-shell')
+
     os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(submit_args)
 
     spark_home = os.environ['SPARK_HOME']
@@ -238,7 +262,6 @@ def init_spark(config, app=None, use_session=False):
 
         builder = SparkSession.builder.appName(app or config['app'])
 
-        mode_yarn = config['spark-prop.spark.master'].startswith('yarn')
         if mode_yarn:
             builder = builder.enableHiveSupport()
 

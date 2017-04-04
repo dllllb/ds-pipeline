@@ -259,5 +259,10 @@ source : ${model-definfition.train-dataset} {
 
 ```ipython
 %run core.py
-sc, sqc = init_session('spark.conf', app = 'My App', return_context=True, overrides = 'spark.executor.instances=20,spark.executor.memory=30g')
+
+ss = init_session(
+  config='spark.conf',
+  app='My App',
+  use_session=True,
+  verrides = 'spark.executor.instances=20,spark.executor.memory=30g')
 ```
