@@ -172,7 +172,7 @@ def write(conf, sdf):
     elif storage == 'single-csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
-        sep = conf.get('sep', '\t')
+        sep = unicode(conf.get('sep', '\t'))
 
         from csv import DictWriter
         import io
