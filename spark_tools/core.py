@@ -174,8 +174,17 @@ def write(conf, sdf):
         header = conf.get_bool('header', True)
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
-        pdf = sdf.toPandas()
-        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
+
+        from csv import DictWriter
+        import io
+
+        with io.open(data_path, 'w', encoding='utf8') as f:
+            dw = DictWriter(f, sdf.columns, delimiter=sep, decimal=decimal)
+            if header:
+                dw.writeheader()
+
+            for row in sdf.toLocalIterator():
+                dw.writerow(row)
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
 
