@@ -172,18 +172,23 @@ def write(conf, sdf):
     elif storage == 'single-csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
-        sep = unicode(conf.get('sep', '\t'))
+        sep = conf.get('sep', '\t')
 
         from csv import DictWriter
-        import io
 
-        with io.open(data_path, 'w', encoding='utf8') as f:
-            dw = DictWriter(f, [unicode(c) for c in sdf.columns], delimiter=sep)
+        def to_unicode(s):
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            else:
+                return s
+
+        with open(data_path, 'wb') as f:
+            dw = DictWriter(f, [to_unicode(c) for c in sdf.columns], delimiter=sep)
             if header:
                 dw.writeheader()
 
             for row in sdf.toLocalIterator():
-                r = dict([(unicode(k), unicode(w)) for k, w in row.iteritems()])
+                r = dict([(to_unicode(k), to_unicode(w)) for k, w in row.iteritems()])
                 dw.writerow(r)
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
