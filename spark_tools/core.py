@@ -327,7 +327,7 @@ def jdbc_load(
     fetch_size=10000000
 ):
     import re
-    if re.match('\s*\(.+\)\s+as\s+[\w\.]+\s*', query):
+    if re.match('\s*\(.+\)\s+as\s+\w+\s*', query):
         _query = query
     else:
         _query = '({}) as a'.format(query)
