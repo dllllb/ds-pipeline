@@ -179,7 +179,7 @@ def write(conf, sdf):
         import io
 
         with io.open(data_path, 'w', encoding='utf8') as f:
-            dw = DictWriter(f, sdf.columns, delimiter=sep, decimal=decimal)
+            dw = DictWriter(f, sdf.columns, delimiter=sep)
             if header:
                 dw.writeheader()
 
