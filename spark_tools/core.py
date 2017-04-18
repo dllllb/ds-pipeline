@@ -178,12 +178,13 @@ def write(conf, sdf):
         import io
 
         with io.open(data_path, 'w', encoding='utf8') as f:
-            dw = DictWriter(f, sdf.columns, delimiter=sep)
+            dw = DictWriter(f, [unicode(c) for c in sdf.columns], delimiter=sep)
             if header:
                 dw.writeheader()
 
             for row in sdf.toLocalIterator():
-                dw.writerow(row)
+                r = dict([(unicode(k), unicode(w)) for k, w in row.iteritems()])
+                dw.writerow(r)
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
 
