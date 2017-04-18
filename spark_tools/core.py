@@ -173,7 +173,6 @@ def write(conf, sdf):
         data_path = conf['query']
         header = conf.get_bool('header', True)
         sep = conf.get('sep', '\t')
-        decimal = conf.get('decimal', '.')
 
         from csv import DictWriter
         import io
