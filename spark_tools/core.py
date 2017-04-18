@@ -326,11 +326,17 @@ def jdbc_load(
     num_partitions=10,
     fetch_size=10000000
 ):
+    import re
+    if re.match('\s*\(.+\)\s+as\s+[\w\.]+\s*', query):
+        _query = query
+    else:
+        _query = '({}) as a'.format(query)
+
     conn_params_base = dict(conn_params)
     if partition_column and num_partitions and num_partitions > 1:
         min_max_query = '''
           (select max({part_col}) as max_part, min({part_col}) as min_part
-             from {query}) as g'''.format(part_col=partition_column, query=query)
+             from {query}) as g'''.format(part_col=partition_column, query=_query)
         max_min_df = sqc.read.load(dbtable=min_max_query, **conn_params_base)
         tuples = max_min_df.rdd.collect()
         max_part = str(tuples[0].max_part)
@@ -340,5 +346,5 @@ def jdbc_load(
         conn_params_base['lowerBound'] = min_part
         conn_params_base['upperBound'] = max_part
         conn_params_base['numPartitions'] = str(num_partitions)
-    sdf = sqc.read.load(dbtable=query, **conn_params_base)
+    sdf = sqc.read.load(dbtable=_query, **conn_params_base)
     return sdf
