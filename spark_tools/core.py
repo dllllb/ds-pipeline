@@ -153,45 +153,53 @@ def write(conf, sdf):
     elif storage == 'hive':
         write_mode = conf.get('write-mode', 'append')
         table = conf['query']
-
-        db, tname = table.split('.')
-        if tname in sdf.sql_ctx.tableNames(db):
-            cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).toPandas().result.tolist()
-            column_order = [c.strip() for c in cols]
-        else:
-            column_order = sdf.columns
-
-        w = sdf.select(*column_order).write.mode(write_mode)
-
         write_format = conf.get('dataset-store-format', None)
-        if write_format is not None:
-            w = w.format(write_format)
-
         partition_by = conf.get('partition-by', None)
-        w.saveAsTable(table, partitionBy=partition_by)
+
+        save_to_hive(sdf, table, write_mode, partition_by, write_format)
     elif storage == 'single-csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
         sep = conf.get('sep', '\t')
 
-        from csv import DictWriter
-
-        def to_unicode(s):
-            if isinstance(s, unicode):
-                return s.encode('utf8')
-            else:
-                return s
-
-        with open(data_path, 'wb') as f:
-            dw = DictWriter(f, [to_unicode(c) for c in sdf.columns], delimiter=sep)
-            if header:
-                dw.writeheader()
-
-            for row in sdf.toLocalIterator():
-                r = dict([(to_unicode(k), to_unicode(w)) for k, w in row.iteritems()])
-                dw.writerow(r)
+        save_to_csv(sdf, data_path, header, sep)
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
+
+
+def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_format=None):
+    db, tname = table.split('.')
+    if tname in sdf.sql_ctx.tableNames(db):
+        cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).toPandas().result.tolist()
+        column_order = [c.strip() for c in cols]
+    else:
+        column_order = sdf.columns
+
+    w = sdf.select(*column_order).write.mode(write_mode)
+
+    if write_format is not None:
+        w = w.format(write_format)
+
+    w.saveAsTable(table, partitionBy=partition_by)
+
+
+def save_to_csv(sdf, data_path, header=True, sep='\t'):
+    from csv import DictWriter
+
+    def to_unicode(s):
+        if isinstance(s, unicode):
+            return s.encode('utf8')
+        else:
+            return s
+
+    with open(data_path, 'wb') as f:
+        dw = DictWriter(f, [to_unicode(c) for c in sdf.columns], delimiter=sep)
+        if header:
+            dw.writeheader()
+
+        for row in sdf.toLocalIterator():
+            r = dict([(to_unicode(k), to_unicode(w)) for k, w in row.iteritems()])
+            dw.writerow(r)
 
 
 def prop_list(tree, prefix=list()):
