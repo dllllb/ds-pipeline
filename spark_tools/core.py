@@ -163,7 +163,7 @@ def write(conf, sdf):
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
         pdf = sdf.toPandas()
-        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
+        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8', index=False)
     elif storage == 'csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
