@@ -1,7 +1,20 @@
-def http_cache(url, local_path=None, cache_prefix='http', check_update=False, fail_on_check_failure=True):
+
+
+def http_cache(url,
+               local_path=None,
+               cache_prefix='http',
+               check_update=False,
+               fail_on_check_failure=True,
+               dry_run=False):
     import os
     import hashlib
     import requests
+
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        def tqdm(arg):
+            return arg
 
     if local_path is None:
         cache = os.path.expanduser("~/.{}".format(cache_prefix))
@@ -15,7 +28,9 @@ def http_cache(url, local_path=None, cache_prefix='http', check_update=False, fa
     else:
         cache_file = local_path
 
-    if os.path.exists(cache_file):
+    if dry_run:
+        pass
+    elif os.path.exists(cache_file):
         if check_update:
             sha1 = hashlib.sha1()
 
@@ -52,7 +67,7 @@ def http_cache(url, local_path=None, cache_prefix='http', check_update=False, fa
                 print("file {} is changed, updating...".format(cache_file))
 
                 with open(cache_file, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=128):
+                    for chunk in tqdm(r.iter_content(chunk_size=128)):
                         f.write(chunk)
 
                 print("file {} is updated".format(cache_file))
@@ -68,7 +83,7 @@ def http_cache(url, local_path=None, cache_prefix='http', check_update=False, fa
         r = requests.get(url, stream=True)
 
         with open(cache_file, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in tqdm(r.iter_content(chunk_size=128)):
                 f.write(chunk)
 
         print("file {} is downloaded".format(cache_file))
@@ -79,12 +94,13 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--check-update', action='store_true')
     parser.add_argument('url')
     parser.add_argument('--local-path', default=None)
     args = parser.parse_args()
 
-    http_cache(args.url, args.local_path, check_update=args.check_update)
+    print(http_cache(args.url, args.local_path, check_update=args.check_update, dry_run=args.dry_run))
 
 if __name__ == "__main__":
     main()

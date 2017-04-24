@@ -1,4 +1,4 @@
-def s3cache(bucket, key, cache_prefix='s3cache', check_update=False):
+def s3cache(bucket, key, cache_prefix='s3cache', check_update=False, dry_run=False):
     import os
     import boto
 
@@ -9,9 +9,8 @@ def s3cache(bucket, key, cache_prefix='s3cache', check_update=False):
     parent = "/".join(path_parts[:-1])
     digest_file = item + ".digest"
 
-    if not os.path.exists(parent):
-        os.makedirs(parent)
-
+    if dry_run:
+        pass
     if os.path.exists(item):
         if check_update:
             digest = "none"
@@ -40,6 +39,9 @@ def s3cache(bucket, key, cache_prefix='s3cache', check_update=False):
     else:
         print("file {} is missing, downloading...".format(item))
 
+        if not os.path.exists(parent):
+            os.makedirs(parent)
+
         conn = boto.connect_s3()
 
         bucket = conn.get_bucket(bucket)
@@ -57,12 +59,13 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--check-update', action='store_true')
     parser.add_argument('bucket')
     parser.add_argument('key')
     args = parser.parse_args()
 
-    s3cache(args.bucket, args.key, check_update=args.check_update)
+    print(s3cache(args.bucket, args.key, check_update=args.check_update, dry_run=args.emulation_mode))
 
 if __name__ == "__main__":
     main()
