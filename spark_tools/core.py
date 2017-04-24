@@ -153,31 +153,60 @@ def write(conf, sdf):
     elif storage == 'hive':
         write_mode = conf.get('write-mode', 'append')
         table = conf['query']
-
-        db, tname = table.split('.')
-        if tname in sdf.sql_ctx.tableNames(db):
-            cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).toPandas().result.tolist()
-            column_order = [c.strip() for c in cols]
-        else:
-            column_order = sdf.columns
-
-        w = sdf.select(*column_order).write.mode(write_mode)
-
         write_format = conf.get('dataset-store-format', None)
-        if write_format is not None:
-            w = w.format(write_format)
-
         partition_by = conf.get('partition-by', None)
-        w.saveAsTable(table, partitionBy=partition_by)
+
+        save_to_hive(sdf, table, write_mode, partition_by, write_format)
     elif storage == 'single-csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
         pdf = sdf.toPandas()
-        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
+        pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8', index=False)
+    elif storage == 'csv':
+        data_path = conf['query']
+        header = conf.get_bool('header', True)
+        sep = conf.get('sep', '\t')
+
+        save_to_csv(sdf, data_path, header, sep)
     else:
         raise ValueError('unknown storage type: {st}'.format(st=storage))
+
+
+def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_format=None):
+    db, tname = table.split('.')
+    if tname in sdf.sql_ctx.tableNames(db):
+        cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).toPandas().result.tolist()
+        column_order = [c.strip() for c in cols]
+    else:
+        column_order = sdf.columns
+
+    w = sdf.select(*column_order).write.mode(write_mode)
+
+    if write_format is not None:
+        w = w.format(write_format)
+
+    w.saveAsTable(table, partitionBy=partition_by)
+
+
+def save_to_csv(sdf, data_path, header=True, sep='\t'):
+    from csv import DictWriter
+
+    def to_unicode(s):
+        if isinstance(s, unicode):
+            return s.encode('utf8')
+        else:
+            return s
+
+    with open(data_path, 'wb') as f:
+        dw = DictWriter(f, [to_unicode(c) for c in sdf.columns], delimiter=sep)
+        if header:
+            dw.writeheader()
+
+        for row in sdf.toLocalIterator():
+            r = dict([(to_unicode(k), to_unicode(w)) for k, w in row.iteritems()])
+            dw.writerow(r)
 
 
 def prop_list(tree, prefix=list()):
@@ -326,11 +355,17 @@ def jdbc_load(
     num_partitions=10,
     fetch_size=10000000
 ):
+    import re
+    if re.match('\s*\(.+\)\s+as\s+\w+\s*', query):
+        _query = query
+    else:
+        _query = '({}) as a'.format(query)
+
     conn_params_base = dict(conn_params)
     if partition_column and num_partitions and num_partitions > 1:
         min_max_query = '''
           (select max({part_col}) as max_part, min({part_col}) as min_part
-             from {query}) as g'''.format(part_col=partition_column, query=query)
+             from {query}) as g'''.format(part_col=partition_column, query=_query)
         max_min_df = sqc.read.load(dbtable=min_max_query, **conn_params_base)
         tuples = max_min_df.rdd.collect()
         max_part = str(tuples[0].max_part)
@@ -340,5 +375,5 @@ def jdbc_load(
         conn_params_base['lowerBound'] = min_part
         conn_params_base['upperBound'] = max_part
         conn_params_base['numPartitions'] = str(num_partitions)
-    sdf = sqc.read.load(dbtable=query, **conn_params_base)
+    sdf = sqc.read.load(dbtable=_query, **conn_params_base)
     return sdf
