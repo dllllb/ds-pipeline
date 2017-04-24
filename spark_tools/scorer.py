@@ -46,7 +46,7 @@ sdf = spark_utils.pandify(sdf)
 score_df = spark_utils.score(
     sc=sc,
     sdf=sdf,
-    model_path=conf['model-path'],
+    model_path=os.path.expanduser(conf['model-path']),
     cols_to_save=['uid', 'true_target', 'business_dt']
 ).cache()
 

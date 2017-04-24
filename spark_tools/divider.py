@@ -54,7 +54,7 @@ if whitelist_file is not None:
         whitelist_file = [whitelist_file]
 
     for f in whitelist_file:
-        whitelist_path = os.path.join(os.path.dirname(os.path.realpath(args.conf)), f)
+        whitelist_path = os.path.join(os.path.dirname(os.path.realpath(args.conf)), os.path.expanduser(f))
         whitelist = pd.read_csv(whitelist_path, squeeze=True)
         whitelist = whitelist.astype(str)
 
