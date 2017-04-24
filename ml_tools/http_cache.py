@@ -10,7 +10,7 @@ def http_cache(url, local_path=None, cache_prefix='http', check_update=False, fa
 
         up = urlparse(url)
 
-        path_parts = [cache, up.hostname] + up.path.split("/")
+        path_parts = [cache, up.hostname] + up.path.strip('/').split("/")
         cache_file = "/".join(path_parts)
     else:
         cache_file = local_path
