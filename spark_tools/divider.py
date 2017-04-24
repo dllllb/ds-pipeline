@@ -82,12 +82,13 @@ stats = pd.Series({
 
 print(stats)
 
-if conf.get_bool('save-report', True):
-    stats.to_csv(time.strftime('%Y%m%d-report.csv'), sep='\t')
+report_file = conf.get('report-file', None)
+if report_file is not None:
+    stats.to_csv(report_file, sep='\t')
 
 id_list_file = conf.get('id-list-file', None)
 if id_list_file is not None:
-    result.uid.to_csv(time.strftime(id_list_file), index=False, sep='\t')
+    result.uid.to_csv(id_list_file, index=False, sep='\t')
 
 sdf_top = sqc.createDataFrame(df)
 spark_utils.write(conf['target'], sdf_top)
