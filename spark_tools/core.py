@@ -308,20 +308,22 @@ def init_spark(config, app=None, use_session=False):
 
 
 def init_session(config, app=None, return_context=False, overrides=None, use_session=False):
+    import os
+    from pyhocon import ConfigFactory, ConfigParser
+
     if isinstance(config, str):
-        import os
-        from pyhocon import ConfigFactory
         if os.path.exists(config):
-            if overrides is not None:
-                file_conf = ConfigFactory.parse_file(config, resolve=False)
-                over_conf = ConfigFactory.parse_string(overrides)
-                conf = over_conf.with_fallback(file_conf)
-            else:
-                conf = ConfigFactory.parse_file(config)
+            base_conf = ConfigFactory.parse_file(config, resolve=False)
         else:
-            conf = ConfigFactory.parse_string(config)
+            base_conf = ConfigFactory.parse_string(config, resolve=False)
     else:
-        conf = config
+        base_conf = config
+
+    if overrides is not None:
+        over_conf = ConfigFactory.parse_string(overrides)
+        conf = over_conf.with_fallback(base_conf)
+    else:
+        conf = ConfigParser.resolve_substitutions(base_conf)
 
     res = init_spark(conf, app, use_session)
 
