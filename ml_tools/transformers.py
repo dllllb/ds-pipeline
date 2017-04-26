@@ -55,6 +55,36 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
+class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
+    """
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
+    >>> TargetShareCountEncoder().fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
+    [2, 0, 0, 2, 2, 1, 1]
+    """
+
+    def __init__(self, target_label=1):
+        self.vc = dict()
+        self.target_label = target_label
+
+    def fit(self, df, y):
+        for col in df.select_dtypes(include=['object']):
+            vc = df[col].value_counts(dropna=False)
+            true_vc = df[y == self.target_label][col].value_counts(dropna=False)
+            entries = (true_vc / vc).sort_values(ascending=False).index
+            self.vc[col] = dict(zip(entries, range(len(entries))))
+
+        return self
+
+    def transform(self, X):
+        import numpy as np
+        res = X.copy()
+        for col, mapping in self.vc.items():
+            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get(np.nan, 0)))
+        return res
+
+
 def field_list_func(df, field_names):
     field_names_low_case = map(unicode.lower, field_names)
     df.columns = map(str.lower, df.columns)
