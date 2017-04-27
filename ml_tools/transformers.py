@@ -64,6 +64,8 @@ class CountEncoder(BaseEstimator, TransformerMixin):
 
     def fit(self, df, y=None):
         for col in df.select_dtypes(include=['object']):
+            # don't use value_counts(dropna=True)!!!
+            # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
             entries = df[col].value_counts()
             entries.loc['nan'] = df[col].isnull().sum()
             entries = entries.sort_values(ascending=False).index
