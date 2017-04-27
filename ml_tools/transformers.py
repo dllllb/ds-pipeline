@@ -47,23 +47,29 @@ class CountEncoder(BaseEstimator, TransformerMixin):
 
     def fit(self, df, y=None):
         for col in df.select_dtypes(include=['object']):
-            entries = df[col].value_counts(dropna=False).index
+            entries = df[col].value_counts()
+            entries.loc['nan'] = df[col].isnull().sum()
+            entries = entries.sort_values(ascending=False).index
             self.vc[col] = dict(zip(entries, range(len(entries))))
 
         return self
 
     def transform(self, X):
-        import numpy as np
         res = X.copy()
         for col, mapping in self.vc.items():
-            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get(np.nan, 0)))
+            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
         return res
 
 
-def build_categorical_feature_encoder(df, y, col, target_label):
-    vc = df[col].value_counts(dropna=False)
-    true_vc = df[y == target_label][col].value_counts(dropna=False)
+def build_categorical_feature_encoder(category_series, category_true_series, col):
+    # don't use value_counts(dropna=True)!!!
+    # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
+    vc = category_series.value_counts()
+    vc.loc['nan'] = category_series.isnull().sum()
+    true_vc = category_true_series.value_counts()
+    true_vc['nan'] = category_true_series.isnull().sum()
     entries = (true_vc / vc).sort_values(ascending=False).index
+
     encoder = dict(zip(entries, range(len(entries))))
     return col, encoder
 
@@ -73,7 +79,12 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
     >>> import pandas as pd
     >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetShareCountEncoder().fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
+    >>> TargetShareCountEncoder(n_jobs=1).fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
+    [2, 0, 0, 2, 2, 1, 1]
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
+    >>> TargetShareCountEncoder(n_jobs=2).fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
     [2, 0, 0, 2, 2, 1, 1]
     """
 
@@ -92,17 +103,16 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
             columns = self.columns
 
         self.vc = dict(Parallel(n_jobs=self.n_jobs)(
-            delayed(build_categorical_feature_encoder)(df, y, col, self.target_label)
+            delayed(build_categorical_feature_encoder)(df[col], df[y == self.target_label][col], col)
             for col in columns
         ))
 
         return self
 
     def transform(self, X):
-        import numpy as np
         res = X.copy()
         for col, mapping in self.vc.items():
-            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get(np.nan, 0)))
+            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
         return res
 
 
