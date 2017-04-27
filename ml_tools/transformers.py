@@ -156,17 +156,18 @@ def days_to_delta_func(df, column_names, base_column):
     delta = np.timedelta64(1, 'D')
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
-        days_open = ((base_col_date - pd.to_datetime(res[col], errors='coerce')) / delta).astype(np.int16)
+        days_open = (base_col_date - pd.to_datetime(res[col], errors='coerce').dropna().dt.days
+        # insert by index
         res[col] = days_open
     return res
 
 
 def days_to_delta(column_names, base_column):
     """
-    >>> import pandas as pd
-    >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20'], 'B': ['2016-02-02', '2016-10-22']})
-    >>> days_to_delta(['A'], 'B').fit_transform(df).A.tolist()
-    [396, 216]
+    >>> import pandas as pd, numpy as np
+    >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
+    >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
+    [396.0, 216.0, -999.0]
     """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
