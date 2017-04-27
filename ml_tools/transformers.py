@@ -1,15 +1,20 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-def high_cardinality_zeroing_func(df, threshold, placeholder):
+def high_cardinality_zeroing_func(df, threshold, placeholder, columns=None):
+    if columns is None:
+        cols = df.select_dtypes(include=['object'])
+    else:
+        cols = columns
+
     dfc = df.copy()
-    for col in dfc.select_dtypes(include=['object']):
+    for col in cols:
         vc = dfc[col].value_counts()
         dfc.ix[~dfc[col].isin(vc[vc > threshold].index), col] = placeholder
     return dfc
 
 
-def high_cardinality_zeroing(threshold=49, placeholder='zeroed'):
+def high_cardinality_zeroing(threshold=49, placeholder='zeroed', columns=None):
     """
     >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
@@ -18,7 +23,7 @@ def high_cardinality_zeroing(threshold=49, placeholder='zeroed'):
     """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
-    f = partial(high_cardinality_zeroing_func, threshold=threshold, placeholder=placeholder)
+    f = partial(high_cardinality_zeroing_func, threshold=threshold, placeholder=placeholder, columns=None)
     return FunctionTransformer(func=f, validate=False)
 
 
