@@ -23,7 +23,7 @@ def high_cardinality_zeroing(threshold=49, placeholder='zeroed', columns=None):
     """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
-    f = partial(high_cardinality_zeroing_func, threshold=threshold, placeholder=placeholder, columns=None)
+    f = partial(high_cardinality_zeroing_func, threshold=threshold, placeholder=placeholder, columns=columns)
     return FunctionTransformer(func=f, validate=False)
 
 
