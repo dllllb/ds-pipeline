@@ -1,30 +1,47 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-def high_cardinality_zeroing_func(df, threshold, placeholder, columns=None):
-    if columns is None:
-        cols = df.select_dtypes(include=['object'])
-    else:
-        cols = columns
-
-    dfc = df.copy()
-    for col in cols:
-        vc = dfc[col].value_counts()
-        dfc.ix[~dfc[col].isin(vc[vc > threshold].index), col] = placeholder
-    return dfc
+def zeroing_candidates(data, threshold):
+    vc = data.value_counts()
+    candidates = set(vc[vc <= threshold].index)
+    return candidates
 
 
-def high_cardinality_zeroing(threshold=49, placeholder='zeroed', columns=None):
+class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
     """
     >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
-    >>> high_cardinality_zeroing(2).fit_transform(df).A.tolist()
+    >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
     ['a', 'zeroed', 'zeroed', 'a', 'a']
     """
-    from sklearn.preprocessing import FunctionTransformer
-    from functools import partial
-    f = partial(high_cardinality_zeroing_func, threshold=threshold, placeholder=placeholder, columns=columns)
-    return FunctionTransformer(func=f, validate=False)
+
+    def __init__(self, threshold=49, placeholder='zeroed', columns=None, n_jobs=1):
+        self.zero_categories = dict()
+        self.threshold = threshold
+        self.placeholder = placeholder
+        self.columns = columns
+        self.n_jobs = n_jobs
+
+    def fit(self, df, y=None):
+        from sklearn.externals.joblib import Parallel, delayed
+
+        if self.columns is None:
+            columns = df.select_dtypes(include=['object'])
+        else:
+            columns = self.columns
+
+        self.zero_categories = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
+            delayed(zeroing_candidates)(df[col], self.threshold)
+            for col in columns
+        )))
+
+        return self
+
+    def transform(self, X):
+        res = X.copy()
+        for col, candidates in self.zero_categories.items():
+            res[col] = res[col].map(lambda x: self.placeholder if x in candidates else x)
+        return res
 
 
 def df2dict():
@@ -133,12 +150,13 @@ def field_list(field_names):
 def days_to_delta_func(df, column_names, base_column):
     import numpy as np
     import pandas as pd
+    res = df.copy()
     delta = np.timedelta64(1, 'D')
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
-        days_open = ((base_col_date - pd.to_datetime(df[col], errors='coerce')) / delta).astype(np.int16)
-        df[col] = days_open
-    return df
+        days_open = ((base_col_date - pd.to_datetime(res[col], errors='coerce')) / delta).astype(np.int16)
+        res[col] = days_open
+    return res
 
 
 def days_to_delta(column_names, base_column):
