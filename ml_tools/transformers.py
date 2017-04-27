@@ -78,7 +78,7 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def build_categorical_feature_encoder(category_series, category_true_series, col):
+def build_categorical_feature_encoder(category_series, category_true_series):
     # don't use value_counts(dropna=True)!!!
     # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
     vc = category_series.value_counts()
@@ -88,7 +88,7 @@ def build_categorical_feature_encoder(category_series, category_true_series, col
     entries = (true_vc / vc).sort_values(ascending=False).index
 
     encoder = dict(zip(entries, range(len(entries))))
-    return col, encoder
+    return encoder
 
 
 class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
@@ -119,10 +119,10 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
         else:
             columns = self.columns
 
-        self.vc = dict(Parallel(n_jobs=self.n_jobs)(
-            delayed(build_categorical_feature_encoder)(df[col], df[y == self.target_label][col], col)
+        self.vc = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
+            delayed(build_categorical_feature_encoder)(df[col], df[y == self.target_label][col])
             for col in columns
-        ))
+        )))
 
         return self
 
