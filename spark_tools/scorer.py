@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import sys
 import time
 
@@ -12,7 +13,8 @@ print('{tm} ------------------- {nm} started'.format(
     nm=os.path.basename(__file__)
 ))
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+module_path = os.path.realpath(__file__)
+sys.path.append(module_path)
 
 import core as spark_utils
 
@@ -27,7 +29,11 @@ conf = over_conf.with_fallback(file_conf)
 
 sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
 
-sc.addPyFile(os.path.realpath(spark_utils.__file__))
+module_dir = os.path.dirname(os.path.dirname(module_path))
+os.makedirs(os.path.expanduser('~/.temp'))
+zip_path = '~/.temp/ds-tools.zip'
+shutil.make_archive(zip_path, 'zip', module_dir)
+sc.addPyFile(zip_path)
 
 pipeline_file = conf.get('pipeline-file', None)
 
