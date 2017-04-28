@@ -1,9 +1,9 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-def zeroing_candidates(data, threshold):
+def zeroing_candidates(data, threshold, top):
     vc = data.value_counts()
-    candidates = set(vc[vc <= threshold].index)
+    candidates = set(vc[vc <= threshold].index).union(set(vc[top:].index))
     return candidates
 
 
@@ -13,11 +13,16 @@ class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
     >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
     ['a', 'zeroed', 'zeroed', 'a', 'a']
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
+    >>> HighCardinalityZeroing(top=2).fit_transform(df).A.tolist()
+    ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed']
     """
 
-    def __init__(self, threshold=49, placeholder='zeroed', columns=None, n_jobs=1):
+    def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
         self.zero_categories = dict()
         self.threshold = threshold
+        self.top = top
         self.placeholder = placeholder
         self.columns = columns
         self.n_jobs = n_jobs
@@ -31,7 +36,7 @@ class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
             columns = self.columns
 
         self.zero_categories = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(zeroing_candidates)(df[col], self.threshold)
+            delayed(zeroing_candidates)(df[col], self.threshold, self.top)
             for col in columns
         )))
 
@@ -135,17 +140,23 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def field_list_func(df, field_names):
-    field_names_low_case = map(unicode.lower, field_names)
-    df.columns = map(str.lower, df.columns)
+def field_list_func(df, field_names, drop_mode):
+    if drop_mode:
+        field_names_low_case = map(unicode.lower, field_names)
+        df.columns = map(str.lower, df.columns)
 
-    return df[field_names_low_case]
+        return df.drop(field_names_low_case, axis=1)
+    else:
+        field_names_low_case = map(unicode.lower, field_names)
+        df.columns = map(str.lower, df.columns)
+
+        return df[field_names_low_case]
 
 
-def field_list(field_names):
+def field_list(field_names, drop_mode=False):
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
-    f = partial(field_list_func, field_names=field_names)
+    f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode)
     return FunctionTransformer(func=f, validate=False)
 
 
