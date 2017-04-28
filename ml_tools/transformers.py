@@ -150,21 +150,18 @@ def field_list(field_names):
 
 
 def days_to_delta_func(df, column_names, base_column):
-    import numpy as np
     import pandas as pd
     res = df.copy()
-    delta = np.timedelta64(1, 'D')
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
-        days_open = (base_col_date - pd.to_datetime(res[col], errors='coerce').dropna().dt.days
-        # insert by index
-        res[col] = days_open
+        days_open = (base_col_date - pd.to_datetime(res[col], errors='coerce')).dropna().dt.days
+        res[col] = days_open # insert is performed by index hence missing records are not written
     return res
 
 
 def days_to_delta(column_names, base_column):
     """
-    >>> import pandas as pd, numpy as np
+    >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
     >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
     [396.0, 216.0, -999.0]
