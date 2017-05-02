@@ -29,12 +29,10 @@ conf = over_conf.with_fallback(file_conf)
 
 sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
 
-cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
-
 module_dir = os.path.dirname(os.path.dirname(module_path))
-os.makedirs(os.path.expanduser('~/.temp'))
-zip_path = '~/.temp/ds-tools.zip'
-shutil.make_archive(zip_path, 'zip', module_dir)
+zip_dir = os.path.expanduser('~/.temp')
+os.makedirs(zip_dir)
+zip_path = shutil.make_archive(base_name='ds-tools', format='zip', root_dir=module_dir, base_dir=zip_dir)
 sc.addPyFile(zip_path)
 
 pipeline_file = conf.get('pipeline-file', None)
@@ -50,6 +48,8 @@ sdf = spark_utils.define_data_frame(conf['source'], sqc)
 sdf = sdf.filter('uid is not null')
 sdf = sdf.withColumn('uid', sdf.uid.astype('string'))
 sdf = spark_utils.pandify(sdf)
+
+cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
 
 score_df = spark_utils.score(
     sc=sc,
