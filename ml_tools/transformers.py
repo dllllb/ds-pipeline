@@ -142,6 +142,7 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
 def field_list_func(df, field_names, drop_mode):
     if drop_mode:
+        field_names = map(unicode, field_names)
         field_names_low_case = map(unicode.lower, field_names)
         df.columns = map(str.lower, df.columns)
 
