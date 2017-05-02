@@ -29,6 +29,8 @@ conf = over_conf.with_fallback(file_conf)
 
 sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
 
+cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
+
 module_dir = os.path.dirname(os.path.dirname(module_path))
 os.makedirs(os.path.expanduser('~/.temp'))
 zip_path = '~/.temp/ds-tools.zip'
@@ -53,7 +55,7 @@ score_df = spark_utils.score(
     sc=sc,
     sdf=sdf,
     model_path=os.path.expanduser(conf['model-path']),
-    cols_to_save=['uid', 'true_target', 'business_dt']
+    cols_to_save=cols_to_save
 ).cache()
 
 author_name = os.environ.get('USER', '!unknown')
