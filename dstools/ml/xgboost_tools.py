@@ -7,7 +7,7 @@ Advantages over default wrapper:
 """
 
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 import numpy as np

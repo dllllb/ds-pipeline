@@ -13,9 +13,9 @@ from sklearn.metrics import roc_auc_score, make_scorer
 from sklearn.preprocessing import label_binarize
 from sklearn.tree import DecisionTreeRegressor
 
-from ensemble import ModelEnsemble, ModelEnsembleRegressor, ModelEnsembleMean, OneVsRestEnsemble, \
-    ModelEnsembleMeanRegressor, KFoldStackingFullRegressor, KFoldStackingFull, KFoldStacking, ForcedMultilabelModel, \
-    PerGroupRegressor
+from ensemble import ModelEnsemble, ModelEnsembleRegressor, ModelEnsembleMean
+from ensemble import OneVsRestEnsemble, ModelEnsembleMeanRegressor, KFoldStackingFullRegressor
+from ensemble import KFoldStackingFull, KFoldStacking, ForcedMultilabelModel, PerGroupRegressor
 
 
 def roc_auc_avg_score(y_true, y_score):
