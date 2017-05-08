@@ -146,7 +146,7 @@ def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
         field_names = map(unicode.lower, field_names)
 
         df_cols = map(unicode, df.columns)
-        df_cols = map(str.lower, df_cols)
+        df_cols = map(unicode.lower, df_cols)
 
         col_indexes = [df_cols.index(f) for f in field_names]
         cols = df.columns[col_indexes]
@@ -160,6 +160,13 @@ def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
 
 
 def field_list(field_names, drop_mode=False, ignore_case=True):
+    """
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> df = pd.DataFrame(np.arange(9).reshape((3, -1)), columns=['A', 'B', 'C'])
+    >>> field_list(['a', 'b']).transform(df).columns.tolist()
+    ['A', 'B']
+    """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
     f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode, ignore_case=ignore_case)
