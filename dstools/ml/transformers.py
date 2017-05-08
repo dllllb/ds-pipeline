@@ -131,10 +131,59 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
         return self
 
-    def transform(self, X):
-        res = X.copy()
+    def transform(self, df):
+        res = df.copy()
         for col, mapping in self.vc.items():
             res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+        return res
+
+
+class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
+    """
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
+        >>> y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
+        >>> dft = MultiClassTargetShareCountEncoder(n_jobs=1).fit_transform(df, y)
+        >>> dft.columns.tolist()
+        ['A_1', 'A_2']
+        >>> dft.A_1.tolist()
+        [0, 2, 2, 0, 0, 2, 1, 1, 2]
+        >>> dft.A_2.tolist()
+        [2, 0, 0, 2, 2, 0, 1, 1, 0]
+    """
+
+    def __init__(self, columns=None, n_jobs=1):
+        self.class_encodings = dict()
+        self.columns = columns
+        self.n_jobs = n_jobs
+        self.columns = None
+
+    def fit(self, df, y):
+        from sklearn.externals.joblib import Parallel, delayed
+        import pandas as pd
+
+        encoded_classes = pd.Series(y).value_counts().index[1:]
+
+        if self.columns is None:
+            self.columns = df.select_dtypes(include=['object'])
+
+        for cl in encoded_classes:
+            vc = dict(zip(self.columns, Parallel(n_jobs=self.n_jobs)(
+                delayed(build_categorical_feature_encoder)(df[col], df[y == cl][col])
+                for col in self.columns
+            )))
+            self.class_encodings[cl] = vc
+
+        return self
+
+    def transform(self, df):
+        res = df.copy()
+        for cls, cols in self.class_encodings.items():
+            for col, mapping in cols.items():
+                res['{}_{}'.format(col, cls)] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+
+        res = res.drop(self.columns, axis=1)
         return res
 
 
