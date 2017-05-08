@@ -140,24 +140,29 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def field_list_func(df, field_names, drop_mode=False):
-    if drop_mode:
+def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
+    if ignore_case:
         field_names = map(unicode, field_names)
-        field_names_low_case = map(unicode.lower, field_names)
-        df.columns = map(str.lower, df.columns)
+        field_names = map(unicode.lower, field_names)
 
-        return df.drop(field_names_low_case, axis=1)
+        df_cols = map(unicode, df.columns)
+        df_cols = map(str.lower, df_cols)
+
+        col_indexes = [df_cols.index(f) for f in field_names]
+        cols = df.columns[col_indexes]
     else:
-        field_names_low_case = map(unicode.lower, field_names)
-        df.columns = map(str.lower, df.columns)
+        cols = field_names
 
-        return df[field_names_low_case]
+    if drop_mode:
+        return df.drop(cols, axis=1)
+    else:
+        return df[cols]
 
 
-def field_list(field_names, drop_mode=False):
+def field_list(field_names, drop_mode=False, ignore_case=True):
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
-    f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode)
+    f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode, ignore_case=ignore_case)
     return FunctionTransformer(func=f, validate=False)
 
 
