@@ -98,23 +98,26 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
     >>> import pandas as pd
     >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetShareCountEncoder(n_jobs=1).fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
-    [2, 0, 0, 2, 2, 1, 1]
+    >>> TargetShareCountEncoder(n_jobs=1).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
+    [0, 2, 2, 0, 0, 1, 1]
     >>> import pandas as pd
     >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetShareCountEncoder(n_jobs=2).fit_transform(df, np.array([0, 1, 1, 1, 0, 1, 0])).A.tolist()
-    [2, 0, 0, 2, 2, 1, 1]
+    >>> TargetShareCountEncoder(n_jobs=2).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
+    [0, 2, 2, 0, 0, 1, 1]
     """
 
     def __init__(self, target_label=1, columns=None, n_jobs=1):
         self.vc = dict()
-        self.target_label = target_label
+        self.target_label = target_label  # target_label param is deprecated
         self.columns = columns
         self.n_jobs = n_jobs
 
     def fit(self, df, y):
         from sklearn.externals.joblib import Parallel, delayed
+        import pandas as pd
+
+        self.target_label = pd.Series(y).value_counts().index[1]
 
         if self.columns is None:
             columns = df.select_dtypes(include=['object'])
