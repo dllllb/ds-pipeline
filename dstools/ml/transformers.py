@@ -1,9 +1,9 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-def zeroing_candidates(data, threshold):
+def zeroing_candidates(data, threshold, top):
     vc = data.value_counts()
-    candidates = set(vc[vc <= threshold].index)
+    candidates = set(vc[vc <= threshold].index).union(set(vc[top:].index))
     return candidates
 
 
@@ -13,11 +13,16 @@ class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
     >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
     ['a', 'zeroed', 'zeroed', 'a', 'a']
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
+    >>> HighCardinalityZeroing(top=2).fit_transform(df).A.tolist()
+    ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed']
     """
 
-    def __init__(self, threshold=49, placeholder='zeroed', columns=None, n_jobs=1):
+    def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
         self.zero_categories = dict()
         self.threshold = threshold
+        self.top = top
         self.placeholder = placeholder
         self.columns = columns
         self.n_jobs = n_jobs
@@ -31,7 +36,7 @@ class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
             columns = self.columns
 
         self.zero_categories = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(zeroing_candidates)(df[col], self.threshold)
+            delayed(zeroing_candidates)(df[col], self.threshold, self.top)
             for col in columns
         )))
 
@@ -187,38 +192,55 @@ class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def field_list_func(df, field_names):
-    field_names_low_case = map(unicode.lower, field_names)
-    df.columns = map(str.lower, df.columns)
+def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
+    if ignore_case:
+        field_names = map(unicode, field_names)
+        field_names = map(unicode.lower, field_names)
 
-    return df[field_names_low_case]
+        df_cols = map(unicode, df.columns)
+        df_cols = map(unicode.lower, df_cols)
+
+        col_indexes = [df_cols.index(f) for f in field_names]
+        cols = df.columns[col_indexes]
+    else:
+        cols = field_names
+
+    if drop_mode:
+        return df.drop(cols, axis=1)
+    else:
+        return df[cols]
 
 
-def field_list(field_names):
+def field_list(field_names, drop_mode=False, ignore_case=True):
+    """
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> df = pd.DataFrame(np.arange(9).reshape((3, -1)), columns=['A', 'B', 'C'])
+    >>> field_list(['a', 'b']).transform(df).columns.tolist()
+    ['A', 'B']
+    """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial
-    f = partial(field_list_func, field_names=field_names)
+    f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode, ignore_case=ignore_case)
     return FunctionTransformer(func=f, validate=False)
 
 
 def days_to_delta_func(df, column_names, base_column):
-    import numpy as np
     import pandas as pd
     res = df.copy()
-    delta = np.timedelta64(1, 'D')
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
-        days_open = ((base_col_date - pd.to_datetime(res[col], errors='coerce')) / delta).astype(np.int16)
-        res[col] = days_open
+        days_open = (base_col_date - pd.to_datetime(res[col], errors='coerce')).dropna().dt.days
+        res[col] = days_open # insert is performed by index hence missing records are not written
     return res
 
 
 def days_to_delta(column_names, base_column):
     """
     >>> import pandas as pd
-    >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20'], 'B': ['2016-02-02', '2016-10-22']})
-    >>> days_to_delta(['A'], 'B').fit_transform(df).A.tolist()
-    [396, 216]
+    >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
+    >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
+    [396.0, 216.0, -999.0]
     """
     from sklearn.preprocessing import FunctionTransformer
     from functools import partial

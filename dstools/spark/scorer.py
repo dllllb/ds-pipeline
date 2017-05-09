@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import sys
 import time
 
@@ -12,7 +13,8 @@ print('{tm} ------------------- {nm} started'.format(
     nm=os.path.basename(__file__)
 ))
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+module_path = os.path.realpath(__file__)
+sys.path.append(module_path)
 
 import core as spark_utils
 
@@ -27,7 +29,13 @@ conf = over_conf.with_fallback(file_conf)
 
 sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
 
-sc.addPyFile(os.path.realpath(spark_utils.__file__))
+module_dir = os.path.dirname(os.path.dirname(module_path))
+zip_dir = os.path.expanduser('~/.temp')
+if not os.path.exists(zip_dir):
+    os.makedirs(zip_dir)
+zip_base = os.path.join(zip_dir, 'ds-tools')
+zip_path = shutil.make_archive(base_name=zip_base, format='zip', root_dir=module_dir)
+sc.addPyFile(zip_path)
 
 pipeline_file = conf.get('pipeline-file', None)
 
@@ -43,11 +51,13 @@ sdf = sdf.filter('uid is not null')
 sdf = sdf.withColumn('uid', sdf.uid.astype('string'))
 sdf = spark_utils.pandify(sdf)
 
+cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
+
 score_df = spark_utils.score(
     sc=sc,
     sdf=sdf,
     model_path=os.path.expanduser(conf['model-path']),
-    cols_to_save=['uid', 'true_target', 'business_dt']
+    cols_to_save=cols_to_save
 ).cache()
 
 author_name = os.environ.get('USER', '!unknown')
