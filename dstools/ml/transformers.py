@@ -1,4 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+import numpy as np
+import pandas as pd
 
 
 def zeroing_candidates(data, threshold, top):
@@ -9,11 +11,9 @@ def zeroing_candidates(data, threshold, top):
 
 class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
     """
-    >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
     >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
     ['a', 'zeroed', 'zeroed', 'a', 'a']
-    >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
     >>> HighCardinalityZeroing(top=2).fit_transform(df).A.tolist()
     ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed']
@@ -57,8 +57,6 @@ def df2dict():
 
 class CountEncoder(BaseEstimator, TransformerMixin):
     """
-    >>> import pandas as pd
-    >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan]})
     >>> CountEncoder().fit_transform(df).A.tolist()
     [0, 1, 1, 0, 0, 2]
@@ -71,8 +69,7 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         for col in df.select_dtypes(include=['object']):
             # don't use value_counts(dropna=True)!!!
             # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
-            entries = df[col].value_counts()
-            entries.loc['nan'] = df[col].isnull().sum()
+            entries = df[col].replace(np.nan, 'nan').value_counts()
             entries = entries.sort_values(ascending=False).index
             self.vc[col] = dict(zip(entries, range(len(entries))))
 
@@ -88,10 +85,8 @@ class CountEncoder(BaseEstimator, TransformerMixin):
 def build_categorical_feature_encoder(category_series, category_true_series):
     # don't use value_counts(dropna=True)!!!
     # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
-    vc = category_series.value_counts()
-    vc.loc['nan'] = category_series.isnull().sum()
-    true_vc = category_true_series.value_counts()
-    true_vc['nan'] = category_true_series.isnull().sum()
+    vc = category_series.replace(np.nan, 'nan').value_counts()
+    true_vc = category_true_series.replace(np.nan, 'nan').value_counts()
     entries = (true_vc / vc).sort_values(ascending=False).index
 
     encoder = dict(zip(entries, range(len(entries))))
@@ -100,13 +95,9 @@ def build_categorical_feature_encoder(category_series, category_true_series):
 
 class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
     """
-    >>> import pandas as pd
-    >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
     >>> TargetShareCountEncoder(n_jobs=1).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
     [0, 2, 2, 0, 0, 1, 1]
-    >>> import pandas as pd
-    >>> import numpy as np
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
     >>> TargetShareCountEncoder(n_jobs=2).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
     [0, 2, 2, 0, 0, 1, 1]
@@ -120,7 +111,6 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
     def fit(self, df, y):
         from sklearn.externals.joblib import Parallel, delayed
-        import pandas as pd
 
         self.target_label = pd.Series(y).value_counts().index[1]
 
@@ -145,17 +135,15 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
 class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
     """
-        >>> import pandas as pd
-        >>> import numpy as np
-        >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
-        >>> y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
-        >>> dft = MultiClassTargetShareCountEncoder(n_jobs=1).fit_transform(df, y)
-        >>> dft.columns.tolist()
-        ['A_1', 'A_2']
-        >>> dft.A_1.tolist()
-        [0, 2, 2, 0, 0, 2, 1, 1, 2]
-        >>> dft.A_2.tolist()
-        [2, 0, 0, 2, 2, 0, 1, 1, 0]
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
+    >>> y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
+    >>> dft = MultiClassTargetShareCountEncoder(n_jobs=1).fit_transform(df, y)
+    >>> dft.columns.tolist()
+    ['A_1', 'A_2']
+    >>> dft.A_1.tolist()
+    [0, 2, 2, 0, 0, 2, 1, 1, 2]
+    >>> dft.A_2.tolist()
+    [2, 0, 0, 2, 2, 0, 1, 1, 0]
     """
 
     def __init__(self, columns=None, n_jobs=1):
@@ -166,7 +154,6 @@ class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
     def fit(self, df, y):
         from sklearn.externals.joblib import Parallel, delayed
-        import pandas as pd
 
         encoded_classes = pd.Series(y).value_counts().index[1:]
 
@@ -192,6 +179,55 @@ class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
+def build_categorical_feature_encoder_mean(column, target, reg):
+    global_mean = target.mean()
+    col_dna = column.replace(np.nan, 'nan')
+    means = target.groupby(col_dna).mean()
+    counts = col_dna.groupby(col_dna).count()
+    if reg is None:
+        reg = counts.mean()*.2
+    means_reg = means * counts + reg * global_mean
+    entries = means_reg.sort_values(ascending=False).index
+
+    encoder = dict(zip(entries, range(len(entries))))
+    return encoder
+
+
+class TargetMeanEncoder(BaseEstimator, TransformerMixin):
+    """
+    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
+    >>> TargetMeanEncoder(n_jobs=1).fit_transform(df, pd.Series([1, 0, 0, 0, 1, 0, 1])).A.tolist()
+    [0, 2, 2, 0, 0, 1, 1]
+    """
+
+    def __init__(self, columns=None, n_jobs=1, reg=None):
+        self.vc = dict()
+        self.columns = columns
+        self.n_jobs = n_jobs
+        self.reg = reg
+
+    def fit(self, df, y):
+        from sklearn.externals.joblib import Parallel, delayed
+
+        if self.columns is None:
+            columns = df.select_dtypes(include=['object'])
+        else:
+            columns = self.columns
+
+        self.vc = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
+            delayed(build_categorical_feature_encoder_mean)(df[col], y, self.reg)
+            for col in columns
+        )))
+
+        return self
+
+    def transform(self, df):
+        res = df.copy()
+        for col, mapping in self.vc.items():
+            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+        return res
+
+
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
         field_names = map(unicode, field_names)
@@ -213,8 +249,6 @@ def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
 
 def field_list(field_names, drop_mode=False, ignore_case=True):
     """
-    >>> import pandas as pd
-    >>> import numpy as np
     >>> df = pd.DataFrame(np.arange(9).reshape((3, -1)), columns=['A', 'B', 'C'])
     >>> field_list(['a', 'b']).transform(df).columns.tolist()
     ['A', 'B']
@@ -226,7 +260,6 @@ def field_list(field_names, drop_mode=False, ignore_case=True):
 
 
 def days_to_delta_func(df, column_names, base_column):
-    import pandas as pd
     res = df.copy()
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
@@ -237,7 +270,6 @@ def days_to_delta_func(df, column_names, base_column):
 
 def days_to_delta(column_names, base_column):
     """
-    >>> import pandas as pd
     >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
     >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
     [396.0, 216.0, -999.0]
