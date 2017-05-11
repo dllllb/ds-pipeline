@@ -1,12 +1,12 @@
 import unittest
-from sklearn.cross_validation import cross_val_score
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.datasets import load_boston, load_iris
 from sklearn.metrics import roc_auc_score, make_scorer
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.preprocessing.label import label_binarize
 import pandas as pd
 
-from xgboost_tools import XGBoostRegressor, XGBoostClassifier
+from dstools.ml.xgboost_tools import XGBoostRegressor, XGBoostClassifier
 
 
 def roc_auc_avg_score(y_true, y_score):
@@ -58,3 +58,17 @@ class TestXGBoost(unittest.TestCase):
         est.fit(pd.DataFrame(iris.data, columns=iris.feature_names), iris.target)
 
         print(est.get_fscore())
+
+    def test_classifier_bin_predict(self):
+        iris = load_iris()
+        target_bin = LabelBinarizer().fit_transform(iris.target).T[0]
+        est = XGBoostClassifier(num_rounds=50, objective='binary:logistic')
+
+        split = train_test_split(iris.data, target_bin)
+        x_train, x_test, y_train, y_test = split
+
+        est.fit(x_train, y_train)
+
+        preds = est.predict(x_test)
+
+        print(zip(preds, y_test))

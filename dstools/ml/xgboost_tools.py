@@ -111,7 +111,7 @@ class XGBoostClassifier(XGBoostModel, ClassifierMixin, object):
             idx = np.argmax(probas, axis=1)
             return self.le.inverse_transform(idx)
         else:
-            return self.le.inverse_transform(probas.T[0] < .5)
+            return self.le.inverse_transform((probas[:, 1] > .5).astype(np.int8))
 
     def predict_proba(self, X):
         pred = self.xgb_predict(X)
