@@ -27,9 +27,9 @@ def limit(sdf, n_records):
     return res
 
 
-def score(sc, sdf, model_path, cols_to_save, target_class=1):
-    from sklearn.externals import joblib
+def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pickle=False):
     import json
+    from sklearn.externals import joblib
 
     def block_iterator(iterator, size):
         bucket = list()
@@ -41,19 +41,38 @@ def score(sc, sdf, model_path, cols_to_save, target_class=1):
         if bucket:
             yield bucket
 
-    model = joblib.load(model_path)
-    model_bc = sc.broadcast(model)
+    if code_in_pickle:
+        import dill
+        model = joblib.load(model_path)
+        model_bc = sc.broadcast(dill.dumps(model))
+    else:
+        model = joblib.load(model_path)
+        model_bc = sc.broadcast(model)
+
     col_bc = sc.broadcast(sdf.columns)
 
     def block_classify(iterator):
         import pandas as pd
+
+        if code_in_pickle:
+            mdl = dill.loads(model_bc.value)
+        else:
+            mdl = model_bc.value
 
         for features in block_iterator(iterator, 10000):
             features_df = pd.DataFrame(list(features), columns=col_bc.value)
             existing_cols_to_save = list(set(cols_to_save).intersection(features_df.columns))
             res_df = features_df[existing_cols_to_save].copy()
 
-            res_df['target_proba'] = model_bc.value.predict_proba(features_df)[:, target_class]
+            pred = mdl.predict_proba(features_df)
+
+            if pred.shape[1] == 2:
+                res_df['target_proba'] = pred[:, 1]
+            elif target_class_names is not None:
+                for i, n in enumerate(target_class_names):
+                    res_df['target_proba_{}'.format(n)] = pred[:, i]
+            else:
+                raise AttributeError('target class names are not set')
 
             for e in json.loads(res_df.to_json(orient='records')):
                 yield e
