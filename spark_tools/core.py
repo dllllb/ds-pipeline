@@ -27,7 +27,7 @@ def limit(sdf, n_records):
     return res
 
 
-def score(sc, sdf, model_path, cols_to_save, target_class=1, code_in_pickle=False):
+def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pickle=False):
     import json
     from sklearn.externals import joblib
 
@@ -64,7 +64,17 @@ def score(sc, sdf, model_path, cols_to_save, target_class=1, code_in_pickle=Fals
             existing_cols_to_save = list(set(cols_to_save).intersection(features_df.columns))
             res_df = features_df[existing_cols_to_save].copy()
 
-            res_df['target_proba'] = mdl.predict_proba(features_df)[:, target_class]
+            res_df['target_proba'] = mdl.predict_proba(features_df)
+
+            pred = mdl.predict_proba(features_df)
+
+            if pred.shape[1] == 2:
+                res_df['target_proba'] = pred[:, 1]
+            elif target_class_names is not None:
+                for i, n in enumerate(target_class_names):
+                    res_df['target_proba_{}'.format(n)] = pred[:, i]
+            else:
+                raise AttributeError('target class names are not set')
 
             for e in json.loads(res_df.to_json(orient='records')):
                 yield e
