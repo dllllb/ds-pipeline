@@ -52,6 +52,7 @@ sdf = sdf.withColumn('uid', sdf.uid.astype('string'))
 sdf = spark_utils.pandify(sdf)
 
 cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
+target_class_names = conf.get('target-class-names', None)
 code_in_pickle = conf.get('code-in-pickle', False)
 
 score_df = spark_utils.score(
@@ -59,6 +60,7 @@ score_df = spark_utils.score(
     sdf=sdf,
     model_path=os.path.expanduser(conf['model-path']),
     cols_to_save=cols_to_save,
+    target_class_names=target_class_names,
     code_in_pickle=code_in_pickle
 ).cache()
 
