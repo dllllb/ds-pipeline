@@ -64,7 +64,7 @@ def score(sc, sdf, model_path, cols_to_save, target_class=1, code_in_pickle=Fals
             existing_cols_to_save = list(set(cols_to_save).intersection(features_df.columns))
             res_df = features_df[existing_cols_to_save].copy()
 
-            res_df['target_proba'] = mdl.value.predict_proba(features_df)[:, target_class]
+            res_df['target_proba'] = mdl.predict_proba(features_df)[:, target_class]
 
             for e in json.loads(res_df.to_json(orient='records')):
                 yield e
