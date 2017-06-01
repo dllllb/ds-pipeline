@@ -1,6 +1,5 @@
 import argparse
 import os
-import shutil
 import sys
 import time
 
@@ -28,14 +27,6 @@ over_conf = ConfigFactory.parse_string(overrides)
 conf = over_conf.with_fallback(file_conf)
 
 sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
-
-#module_dir = os.path.dirname(os.path.dirname(module_path))
-#zip_dir = os.path.expanduser('~/.temp')
-#if not os.path.exists(zip_dir):
-#    os.makedirs(zip_dir)
-#zip_base = os.path.join(zip_dir, 'ds-tools')
-#zip_path = shutil.make_archive(base_name=zip_base, format='zip', root_dir=module_dir)
-#sc.addPyFile(zip_path)
 
 pipeline_file = conf.get('pipeline-file', None)
 
