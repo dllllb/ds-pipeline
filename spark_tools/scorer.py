@@ -52,12 +52,14 @@ sdf = sdf.withColumn('uid', sdf.uid.astype('string'))
 sdf = spark_utils.pandify(sdf)
 
 cols_to_save = conf.get('cols-to-save', ['uid', 'true_target', 'business_dt'])
+code_in_pickle = conf.get('code-in-pickle', False)
 
 score_df = spark_utils.score(
     sc=sc,
     sdf=sdf,
     model_path=os.path.expanduser(conf['model-path']),
-    cols_to_save=cols_to_save
+    cols_to_save=cols_to_save,
+    code_in_pickle=code_in_pickle
 ).cache()
 
 author_name = os.environ.get('USER', '!unknown')
