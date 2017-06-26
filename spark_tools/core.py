@@ -43,7 +43,8 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
 
     if code_in_pickle:
         import dill
-        model = joblib.load(model_path)
+        with open(model_path) as f:
+            model = dill.load(f)
         model_bc = sc.broadcast(dill.dumps(model))
     else:
         model = joblib.load(model_path)
