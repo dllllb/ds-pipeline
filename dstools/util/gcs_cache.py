@@ -1,8 +1,8 @@
-def s3cache(bucket, key, cache_prefix='s3cache', check_update=False, dry_run=False):
+def gcs_cache(bucket, key, cache_prefix='gcs', check_update=False, dry_run=False):
     import os
-    import boto
+    from google.cloud import storage
 
-    cache = os.path.expanduser("~/.{prefix}".format(prefix=cache_prefix))
+    cache = os.path.expanduser("~/.".format(cache_prefix))
 
     path_parts = [cache, bucket] + key.split("/")
     item = "/".join(path_parts)
@@ -18,11 +18,11 @@ def s3cache(bucket, key, cache_prefix='s3cache', check_update=False, dry_run=Fal
                 with open(digest_file) as f:
                     digest = f.read()
 
-            conn = boto.connect_s3()
+            client = storage.Client()
 
-            bucket = conn.get_bucket(bucket)
-            key = bucket.get_key(key)
-            remote_digest = key.etag.strip('"')
+            bucket = client.get_bucket(bucket)
+            blob = bucket.get_blob(key)
+            remote_digest = blob.etag
 
             print("local digest: {}".format(digest))
             print("remote digest: {}".format(remote_digest))
@@ -42,13 +42,15 @@ def s3cache(bucket, key, cache_prefix='s3cache', check_update=False, dry_run=Fal
         if not os.path.exists(parent):
             os.makedirs(parent)
 
-        conn = boto.connect_s3()
+        client = storage.Client()
 
-        bucket = conn.get_bucket(bucket)
-        key = bucket.get_key(key)
-        remote_digest = key.etag.strip('"')
+        bucket = client.get_bucket(bucket)
+        blob = bucket.get_blob(key)
+        remote_digest = blob.etag
 
-        key.get_contents_to_filename(item)
+        with open(item, 'w') as f:
+            blob.download_to_file(f)
+
         with open(digest_file, 'w') as f:
             f.write(remote_digest)
 
@@ -65,7 +67,7 @@ def main():
     parser.add_argument('key')
     args = parser.parse_args()
 
-    print(s3cache(args.bucket, args.key, check_update=args.check_update, dry_run=args.dry_run))
+    print(gcs_cache(args.bucket, args.key, check_update=args.check_update, dry_run=args.dry_run))
 
 if __name__ == "__main__":
     main()
