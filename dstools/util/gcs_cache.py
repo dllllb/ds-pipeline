@@ -2,7 +2,7 @@ def gcs_cache(bucket, key, cache_prefix='gcs', check_update=False, dry_run=False
     import os
     from google.cloud import storage
 
-    cache = os.path.expanduser("~/.".format(cache_prefix))
+    cache = os.path.expanduser("~/.{}".format(cache_prefix))
 
     path_parts = [cache, bucket] + key.split("/")
     item = "/".join(path_parts)
