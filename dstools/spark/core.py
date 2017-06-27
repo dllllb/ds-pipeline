@@ -43,7 +43,8 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
 
     if code_in_pickle:
         import dill
-        model = joblib.load(model_path)
+        with open(model_path) as f:
+            model = dill.load(f)
         model_bc = sc.broadcast(dill.dumps(model))
     else:
         model = joblib.load(model_path)
@@ -179,14 +180,14 @@ def write(conf, sdf):
     elif storage == 'single-csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
-        sep = conf.get('sep', '\t')
-        decimal = conf.get('decimal', '.')
+        sep = str(conf.get('sep', '\t'))
+        decimal = str(conf.get('decimal', '.'))
         pdf = sdf.toPandas()
         pdf.to_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8', index=False)
     elif storage == 'csv':
         data_path = conf['query']
         header = conf.get_bool('header', True)
-        sep = conf.get('sep', '\t')
+        sep = str(conf.get('sep', '\t'))
 
         save_to_csv(sdf, data_path, header, sep)
     else:
