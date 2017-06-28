@@ -75,6 +75,8 @@ class XGBoostModel(BaseEstimator):
 
         return pred
 
+    # __init__ key-value args are not considered in sklearn.base.BaseEstimator.get_params
+    # hence explicit get_params is required
     def get_params(self, deep=True):
         return self.params
 
