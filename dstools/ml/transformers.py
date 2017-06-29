@@ -82,27 +82,17 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def build_categorical_feature_encoder(category_series, category_true_series):
+def build_categorical_feature_encoder(category_series, category_labels):
     # don't use value_counts(dropna=True)!!!
     # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
-    vc = category_series.replace(np.nan, 'nan').value_counts()
-    true_vc = category_true_series.replace(np.nan, 'nan').value_counts()
-    entries = (true_vc / vc).sort_values(ascending=False).index
+    shares = pd.Series(category_labels).groupby(category_series.fillna('nan')).mean()
+    entries = shares.sort_values(ascending=False).index
 
     encoder = dict(zip(entries, range(len(entries))))
     return encoder
 
 
 class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
-    """
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetShareCountEncoder(n_jobs=1).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
-    [0, 2, 2, 0, 0, 1, 1]
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetShareCountEncoder(n_jobs=2).fit_transform(df, np.array([1, 0, 0, 0, 1, 0, 1])).A.tolist()
-    [0, 2, 2, 0, 0, 1, 1]
-    """
-
     def __init__(self, target_label=1, columns=None, n_jobs=1):
         self.vc = dict()
         self.target_label = target_label  # target_label param is deprecated
@@ -120,7 +110,7 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
             columns = self.columns
 
         self.vc = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(build_categorical_feature_encoder)(df[col], df[y == self.target_label][col])
+            delayed(build_categorical_feature_encoder)(df[col], y == self.target_label)
             for col in columns
         )))
 
@@ -134,18 +124,6 @@ class TargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
 
 class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
-    """
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
-    >>> y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
-    >>> dft = MultiClassTargetShareCountEncoder(n_jobs=1).fit_transform(df, y)
-    >>> dft.columns.tolist()
-    ['A_1', 'A_2']
-    >>> dft.A_1.tolist()
-    [0, 2, 2, 0, 0, 2, 1, 1, 2]
-    >>> dft.A_2.tolist()
-    [2, 0, 0, 2, 2, 0, 1, 1, 0]
-    """
-
     def __init__(self, columns=None, n_jobs=1):
         self.class_encodings = dict()
         self.columns = columns
@@ -162,7 +140,7 @@ class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
         for cl in encoded_classes:
             vc = dict(zip(self.columns, Parallel(n_jobs=self.n_jobs)(
-                delayed(build_categorical_feature_encoder)(df[col], df[y == cl][col])
+                delayed(build_categorical_feature_encoder)(df[col], y == cl)
                 for col in self.columns
             )))
             self.class_encodings[cl] = vc
@@ -181,7 +159,7 @@ class MultiClassTargetShareCountEncoder(BaseEstimator, TransformerMixin):
 
 def build_categorical_feature_encoder_mean(column, target, reg):
     global_mean = target.mean()
-    col_dna = column.replace(np.nan, 'nan')
+    col_dna = column.fillna('nan')
     means = target.groupby(col_dna).mean()
     counts = col_dna.groupby(col_dna).count()
     if reg is None:
@@ -194,12 +172,6 @@ def build_categorical_feature_encoder_mean(column, target, reg):
 
 
 class TargetMeanEncoder(BaseEstimator, TransformerMixin):
-    """
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
-    >>> TargetMeanEncoder(n_jobs=1).fit_transform(df, pd.Series([1, 0, 0, 0, 1, 0, 1])).A.tolist()
-    [0, 2, 2, 0, 0, 1, 1]
-    """
-
     def __init__(self, columns=None, n_jobs=1, reg=None):
         self.vc = dict()
         self.columns = columns
@@ -225,6 +197,40 @@ class TargetMeanEncoder(BaseEstimator, TransformerMixin):
         res = df.copy()
         for col, mapping in self.vc.items():
             res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+        return res
+
+
+class MultiClassTargetMeanEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, columns=None, n_jobs=1, reg=None):
+        self.class_encodings = dict()
+        self.columns = columns
+        self.n_jobs = n_jobs
+        self.reg = reg
+
+    def fit(self, df, y):
+        from sklearn.externals.joblib import Parallel, delayed
+
+        encoded_classes = pd.Series(y).value_counts().index[1:]
+
+        if self.columns is None:
+            self.columns = df.select_dtypes(include=['object'])
+
+        for cl in encoded_classes:
+            vc = dict(zip(self.columns, Parallel(n_jobs=self.n_jobs)(
+                delayed(build_categorical_feature_encoder_mean)(df[col], pd.Series(y == cl), self.reg)
+                for col in self.columns
+            )))
+            self.class_encodings[cl] = vc
+
+        return self
+
+    def transform(self, df):
+        res = df.copy()
+        for cls, cols in self.class_encodings.items():
+            for col, mapping in cols.items():
+                res['{}_{}'.format(col, cls)] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+
+        res = res.drop(self.columns, axis=1)
         return res
 
 
