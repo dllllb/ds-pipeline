@@ -30,6 +30,7 @@ def limit(sdf, n_records):
 def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pickle=False):
     import json
     from sklearn.externals import joblib
+    import pandas as pd
 
     def block_iterator(iterator, size):
         bucket = list()
@@ -53,7 +54,6 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
     col_bc = sc.broadcast(sdf.columns)
 
     def block_classify(iterator):
-        import pandas as pd
 
         if code_in_pickle:
             mdl = dill.loads(model_bc.value)
@@ -85,6 +85,8 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
 
 
 def define_data_frame(conf, sqc):
+    import pandas as pd
+
     storage = conf['storage']
 
     if storage == 'jdbc':
@@ -107,7 +109,6 @@ def define_data_frame(conf, sqc):
         header = conf.get('header', 'infer')
         sep = conf.get('sep', '\t')
         decimal = conf.get('decimal', '.')
-        import pandas as pd
         pdf = pd.read_csv(data_path, sep=sep, header=header, decimal=decimal, encoding='utf8')
         sdf = sqc.createDataFrame(pdf)
     elif storage == 'hive':
@@ -149,12 +150,12 @@ def write(conf, sdf):
         if not os.path.exists(os.path.dirname(target_dir)):
             os.makedirs(os.path.dirname(target_dir))
 
-        write_format = conf.get('dataset-store-format', 'parquet')
+        write_format = conf.get('dataset-store-format', 'orc')
         write_mode = conf.get('write-mode', 'overwrite')
         sdf.write.mode(write_mode).format(write_format).save(target_dir)
     elif storage == 'hdfs':
         target_dir = conf['query']
-        write_format = conf.get('dataset-store-format', 'parquet')
+        write_format = conf.get('dataset-store-format', 'orc')
         write_mode = conf.get('write-mode', 'overwrite')
 
         w = sdf.write.mode(write_mode).format(write_format)
@@ -173,7 +174,7 @@ def write(conf, sdf):
     elif storage == 'hive':
         write_mode = conf.get('write-mode', 'append')
         table = conf['query']
-        write_format = conf.get('dataset-store-format', None)
+        write_format = conf.get('dataset-store-format', 'orc')
         partition_by = conf.get('partition-by', None)
 
         save_to_hive(sdf, table, write_mode, partition_by, write_format)
