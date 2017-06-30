@@ -82,14 +82,16 @@ class CountEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def build_categorical_feature_encoder_mean(column, target, reg):
+def build_categorical_feature_encoder_mean(column, target, reg_threshold):
     global_mean = target.mean()
     col_dna = column.fillna('nan')
     means = target.groupby(col_dna).mean()
     counts = col_dna.groupby(col_dna).count()
-    category_share = counts / counts.sum()
-    global_mean_factor = (1 - category_share) * reg
-    means_reg = means * (1 - global_mean_factor) + global_mean_factor * global_mean
+    category_shares = counts / counts.sum()
+    reg = pd.DataFrame(category_shares / reg_threshold)
+    reg[1] = 1.
+    reg = reg.min(axis=1)
+    means_reg = means * reg + (1-reg) * global_mean
     entries = means_reg.sort_values(ascending=False).index
 
     encoder = dict(zip(entries, range(len(entries))))
@@ -97,11 +99,11 @@ def build_categorical_feature_encoder_mean(column, target, reg):
 
 
 class TargetMeanEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, columns=None, n_jobs=1, reg=.0, true_label=None):
+    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001, true_label=None):
         self.vc = dict()
         self.columns = columns
         self.n_jobs = n_jobs
-        self.reg = reg
+        self.reg_threshold = reg_threshold
         self.true_label = true_label
 
     def fit(self, df, y):
@@ -118,7 +120,7 @@ class TargetMeanEncoder(BaseEstimator, TransformerMixin):
             target = y
 
         self.vc = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(build_categorical_feature_encoder_mean)(df[col], target, self.reg)
+            delayed(build_categorical_feature_encoder_mean)(df[col], target, self.reg_threshold)
             for col in columns
         )))
 
@@ -132,11 +134,11 @@ class TargetMeanEncoder(BaseEstimator, TransformerMixin):
 
 
 class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, columns=None, n_jobs=1, reg=.0):
+    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001):
         self.class_encodings = dict()
         self.columns = columns
         self.n_jobs = n_jobs
-        self.reg = reg
+        self.reg_threshold = reg_threshold
 
     def fit(self, df, y):
         from sklearn.externals.joblib import Parallel, delayed
@@ -148,7 +150,7 @@ class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
 
         for cl in encoded_classes:
             vc = dict(zip(self.columns, Parallel(n_jobs=self.n_jobs)(
-                delayed(build_categorical_feature_encoder_mean)(df[col], pd.Series(y == cl), self.reg)
+                delayed(build_categorical_feature_encoder_mean)(df[col], pd.Series(y == cl), self.reg_threshold)
                 for col in self.columns
             )))
             self.class_encodings[cl] = vc
