@@ -6,7 +6,7 @@ import pandas as pd
 
 
 class H2ODecorator(BaseEstimator):
-    def __init__(self, est_type, est_params, nthreads=-1, mem_max='2G'):
+    def __init__(self, est_type, est_params, nthreads=-1, mem_max='2G', target_type=None):
         # using H2O estimator classes directly does not work correctly hence string to class mapping is used
         est_map = {
             'dl': H2ODeepLearningEstimator,
@@ -23,6 +23,7 @@ class H2ODecorator(BaseEstimator):
         self.nthreads = nthreads
         self.mem_max = mem_max
         self.cluster_ready = False
+        self.target_type = target_type
 
     def _init_h2o(self):
         if self.cluster_ready:
@@ -40,7 +41,13 @@ class H2ODecorator(BaseEstimator):
             _y = y.values
         else:
             _y = y
-        target = h2o.H2OFrame(python_obj=_y)
+
+        if self.target_type is not None:
+            target_type = [self.target_type]
+        else:
+            target_type = None
+
+        target = h2o.H2OFrame(python_obj=_y, column_types=target_type)
 
         self.est.fit(features, target)
         return self
@@ -61,6 +68,6 @@ class H2ODecorator(BaseEstimator):
         features = h2o.H2OFrame(python_obj=X)
         pred_df = self.est.predict(features).as_data_frame()
         if pred_df.columns.contains('predict'):
-            return pred_df.drop('predict', axis=1)
+            return pred_df.drop('predict', axis=1).values
         else:
-            return pred_df.drop(pred_df.columns[0], axis=1)
+            return pred_df.drop(pred_df.columns[0], axis=1).values
