@@ -27,6 +27,7 @@ class XGBoostModel(BaseEstimator):
         missing_marker = self.params.get('missing_marker', np.NaN)
         ybin_func = self.params.get('ybin_func')
         objective = self.params.get('objective')
+        verbose = self.params.get('verbose', n_es_rounds)
 
         if early_stop_share > 0:
             if ybin_func:
@@ -44,7 +45,7 @@ class XGBoostModel(BaseEstimator):
                 dtrain=dm,
                 num_boost_round=n_rounds,
                 evals=[(dm, 'train'), (es, 'validation')],
-                verbose_eval=True,
+                verbose_eval=verbose,
                 early_stopping_rounds=n_es_rounds,
                 feval=feval,
                 maximize=False,
