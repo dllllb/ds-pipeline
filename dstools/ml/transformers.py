@@ -1,6 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 import pandas as pd
+import six
 
 
 def zeroing_candidates(data, threshold, top):
@@ -169,11 +170,11 @@ class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
-        field_names = map(unicode, field_names)
-        field_names = map(unicode.lower, field_names)
+        field_names = map(six.u, field_names)
+        field_names = map(lambda e: e.lower(), field_names)
 
-        df_cols = map(unicode, df.columns)
-        df_cols = map(unicode.lower, df_cols)
+        df_cols = map(six.u, df.columns)
+        df_cols = map(lambda e: e.lower(), df_cols)
 
         col_indexes = [df_cols.index(f) for f in field_names]
         cols = df.columns[col_indexes]
