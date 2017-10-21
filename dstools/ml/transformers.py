@@ -1,16 +1,65 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.externals.joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 import six
+from functools import partial
 
 
-def zeroing_candidates(data, threshold, top):
-    vc = data.value_counts()
+def df2dict():
+    from sklearn.preprocessing import FunctionTransformer
+    return FunctionTransformer(
+        lambda x: x.to_dict(orient='records'), validate=False)
+
+
+class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, builder, columns=None, n_jobs=1, true_label=None):
+        self.vc = dict()
+        self.columns = columns
+        self.n_jobs = n_jobs
+        self.true_label = true_label
+        self.builder = builder
+
+    def fit(self, df, y):
+        if self.columns is None:
+            columns = df.select_dtypes(include=['object'])
+        else:
+            columns = self.columns
+
+        if self.true_label is not None:
+            target = (y == self.true_label)
+        else:
+            target = y
+
+        encoders = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.builder)(df[col], target)
+            for col in columns
+        )
+
+        self.vc = dict(zip(columns, encoders))
+
+        return self
+
+    def transform(self, df):
+        res = df.copy()
+        for col, mapping in self.vc.items():
+            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
+        return res
+
+
+def build_zeroing_encoder(column, target, threshold, top, placeholder):
+    vc = column.replace(np.nan, 'nan').value_counts()
     candidates = set(vc[vc <= threshold].index).union(set(vc[top:].index))
-    return candidates
+    encoder = dict(zip(vc.index, vc.index))
+    if 'nan' in encoder:
+        encoder['nan'] = np.nan
+    for c in candidates:
+        encoder[c] = placeholder
+    return encoder
 
 
-class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
+class HighCardinalityZeroing(TargetCategoryEncoder):
     """
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
     >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
@@ -21,66 +70,32 @@ class HighCardinalityZeroing(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
-        self.zero_categories = dict()
-        self.threshold = threshold
-        self.top = top
-        self.placeholder = placeholder
-        self.columns = columns
-        self.n_jobs = n_jobs
+        buider = partial(
+            build_zeroing_encoder,
+            threshold=threshold,
+            top=top,
+            placeholder=placeholder
+        )
 
-    def fit(self, df, y=None):
-        from sklearn.externals.joblib import Parallel, delayed
-
-        if self.columns is None:
-            columns = df.select_dtypes(include=['object'])
-        else:
-            columns = self.columns
-
-        self.zero_categories = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(zeroing_candidates)(df[col], self.threshold, self.top)
-            for col in columns
-        )))
-
-        return self
-
-    def transform(self, X):
-        res = X.copy()
-        for col, candidates in self.zero_categories.items():
-            res[col] = res[col].map(lambda x: self.placeholder if x in candidates else x)
-        return res
+        super(HighCardinalityZeroing, self).__init__(buider, columns, n_jobs)
 
 
-def df2dict():
-    from sklearn.preprocessing import FunctionTransformer
-    return FunctionTransformer(
-        lambda x: x.to_dict(orient='records'), validate=False)
+def build_count_encoder(column, target):
+    entries = column.replace(np.nan, 'nan').value_counts()
+    entries = entries.sort_values(ascending=False).index
+    encoder = dict(zip(entries, range(len(entries))))
+    return encoder
 
 
-class CountEncoder(BaseEstimator, TransformerMixin):
+class CountEncoder(TargetCategoryEncoder):
     """
     >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan]})
     >>> CountEncoder().fit_transform(df).A.tolist()
     [0, 1, 1, 0, 0, 2]
     """
 
-    def __init__(self):
-        self.vc = dict()
-
-    def fit(self, df, y=None):
-        for col in df.select_dtypes(include=['object']):
-            # don't use value_counts(dropna=True)!!!
-            # in case if joblib n_jobs > 1 the behavior of np.nan key is not stable
-            entries = df[col].replace(np.nan, 'nan').value_counts()
-            entries = entries.sort_values(ascending=False).index
-            self.vc[col] = dict(zip(entries, range(len(entries))))
-
-        return self
-
-    def transform(self, X):
-        res = X.copy()
-        for col, mapping in self.vc.items():
-            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
-        return res
+    def __init__(self, columns=None, n_jobs=1):
+        super(CountEncoder, self).__init__(build_count_encoder, columns, n_jobs)
 
 
 def build_categorical_feature_encoder_mean(column, target, reg_threshold):
@@ -99,51 +114,41 @@ def build_categorical_feature_encoder_mean(column, target, reg_threshold):
     return encoder
 
 
-class TargetMeanEncoder(BaseEstimator, TransformerMixin):
+class TargetMeanEncoder(TargetCategoryEncoder):
     def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001, true_label=None):
-        self.vc = dict()
-        self.columns = columns
-        self.n_jobs = n_jobs
-        self.reg_threshold = reg_threshold
-        self.true_label = true_label
-
-    def fit(self, df, y):
-        from sklearn.externals.joblib import Parallel, delayed
-
-        if self.columns is None:
-            columns = df.select_dtypes(include=['object'])
-        else:
-            columns = self.columns
-
-        if self.true_label is not None:
-            target = (y == self.true_label)
-        else:
-            target = y
-
-        self.vc = dict(zip(columns, Parallel(n_jobs=self.n_jobs)(
-            delayed(build_categorical_feature_encoder_mean)(df[col], target, self.reg_threshold)
-            for col in columns
-        )))
-
-        return self
-
-    def transform(self, df):
-        res = df.copy()
-        for col, mapping in self.vc.items():
-            res[col] = res[col].map(lambda x: mapping.get(x, mapping.get('nan', 0)))
-        return res
+        buider = partial(
+            build_categorical_feature_encoder_mean,
+            reg_threshold=reg_threshold
+        )
+        super(TargetMeanEncoder, self).__init__(buider, columns, n_jobs, true_label)
 
 
-class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001):
+def build_categorical_empyrical_bayes_feature_encoder(column, target):
+    global_pos = target.sum()
+    global_count = target.count()
+    col_dna = column.fillna('nan')
+    cat_pos = target.groupby(col_dna).sum()
+    cat_count = col_dna.groupby(col_dna).count()
+
+    codes = (global_pos + cat_pos) / (global_count + cat_count)
+
+    return codes.to_dict()
+
+
+class TargetEmpyricalBayesEncoder(TargetCategoryEncoder):
+    def __init__(self, columns=None, n_jobs=1, true_label=None):
+        buider = build_categorical_empyrical_bayes_feature_encoder
+        super(TargetEmpyricalBayesEncoder, self).__init__(buider, columns, n_jobs, true_label)
+
+
+class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, buider, columns=None, n_jobs=1):
         self.class_encodings = dict()
         self.columns = columns
         self.n_jobs = n_jobs
-        self.reg_threshold = reg_threshold
+        self.builder = buider
 
     def fit(self, df, y):
-        from sklearn.externals.joblib import Parallel, delayed
-
         encoded_classes = pd.Series(y).value_counts().index[1:]
 
         if self.columns is None:
@@ -151,7 +156,7 @@ class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
 
         for cl in encoded_classes:
             vc = dict(zip(self.columns, Parallel(n_jobs=self.n_jobs)(
-                delayed(build_categorical_feature_encoder_mean)(df[col], pd.Series(y == cl), self.reg_threshold)
+                delayed(self.builder)(df[col], pd.Series(y == cl))
                 for col in self.columns
             )))
             self.class_encodings[cl] = vc
@@ -166,6 +171,15 @@ class MultiClassTargetShareEncoder(BaseEstimator, TransformerMixin):
 
         res = res.drop(self.columns, axis=1)
         return res
+
+
+class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
+    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001):
+        buider = partial(
+            build_categorical_feature_encoder_mean,
+            reg_threshold=reg_threshold
+        )
+        super(MultiClassTargetShareEncoder, self).__init__(buider, columns, n_jobs)
 
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
@@ -193,8 +207,6 @@ def field_list(field_names, drop_mode=False, ignore_case=True):
     >>> field_list(['a', 'b']).transform(df).columns.tolist()
     ['A', 'B']
     """
-    from sklearn.preprocessing import FunctionTransformer
-    from functools import partial
     f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode, ignore_case=ignore_case)
     return FunctionTransformer(func=f, validate=False)
 
@@ -214,8 +226,6 @@ def days_to_delta(column_names, base_column):
     >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
     [396.0, 216.0, -999.0]
     """
-    from sklearn.preprocessing import FunctionTransformer
-    from functools import partial
     f = partial(days_to_delta_func, column_names=column_names, base_column=base_column)
     d2d = FunctionTransformer(func=f, validate=False)
     return d2d

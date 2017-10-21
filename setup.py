@@ -3,10 +3,11 @@
 from distutils.core import setup
 
 setup(
-    name='ds-tools',
+    name='Data Science Tools',
     version='0.3.1',
     description='Data Science Tools for Spark and scikit-learn',
     author='Dmitri Babaev',
     author_email='dmitri.babaev@gmail.com',
-    packages=['scikit-learn', 'numpy', 'pandas'],
+    packages=['ds-tools'],
+    requires=['pandas', 'six', 'numpy', 'scikit-learn', ]
 )

@@ -97,7 +97,7 @@ class XGBoostRegressor(XGBoostModel, RegressorMixin):
         return self.xgb_predict(X)
 
 
-class XGBoostClassifier(XGBoostModel, ClassifierMixin, object):
+class XGBoostClassifier(XGBoostModel, ClassifierMixin):
     def __init__(self, **params):
         super(XGBoostClassifier, self).__init__(**params)
         self.le = LabelEncoder()
