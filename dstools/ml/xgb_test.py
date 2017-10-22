@@ -15,7 +15,7 @@ def roc_auc_avg_score(y_true, y_score):
 
 def test_regressor():
     boston = load_boston()
-    est = XGBoostRegressor(num_rounds=50, objective='reg:linear')
+    est = XGBoostRegressor(num_rounds=50, objective='reg:linear', silent=1)
 
     scores = cross_val_score(estimator=est, X=boston.data, y=boston.target, cv=3)
 
@@ -24,7 +24,7 @@ def test_regressor():
 
 def test_classifier():
     iris = load_iris()
-    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3)
+    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3, silent=1)
 
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
 
@@ -35,7 +35,7 @@ def test_classifier():
 
 def test_classifier_shifted_labels():
     iris = load_iris()
-    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3)
+    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3, silent=1)
 
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
 
@@ -47,7 +47,7 @@ def test_classifier_shifted_labels():
 def test_classifier_bin():
     iris = load_iris()
     target_bin = LabelBinarizer().fit_transform(iris.target).T[0]
-    est = XGBoostClassifier(num_rounds=50, objective='reg:logistic')
+    est = XGBoostClassifier(num_rounds=50, objective='reg:logistic', silent=1)
 
     scores = cross_val_score(estimator=est, X=iris.data, y=target_bin, cv=3, scoring='roc_auc')
 
@@ -56,7 +56,7 @@ def test_classifier_bin():
 
 def test_feature_importance():
     iris = load_iris()
-    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3)
+    est = XGBoostClassifier(num_rounds=50, objective='multi:softprob', num_class=3, silent=1)
     est.fit(pd.DataFrame(iris.data, columns=iris.feature_names), iris.target)
 
     print(est.get_fscore())
@@ -65,7 +65,7 @@ def test_feature_importance():
 def test_classifier_bin_predict():
     iris = load_iris()
     target_bin = LabelBinarizer().fit_transform(iris.target).T[0]
-    est = XGBoostClassifier(num_rounds=50, objective='binary:logistic')
+    est = XGBoostClassifier(num_rounds=50, objective='binary:logistic', silent=1)
 
     split = train_test_split(iris.data, target_bin)
     x_train, x_test, y_train, y_test = split
