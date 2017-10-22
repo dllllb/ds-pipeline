@@ -61,6 +61,11 @@ def build_zeroing_encoder(column, __, threshold, top, placeholder):
 
 class HighCardinalityZeroing(TargetCategoryEncoder):
     def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
+        # params are saved for sklearn.base.clone method
+        self.threshold = threshold
+        self.top = top
+        self.placeholder = placeholder
+
         buider = partial(
             build_zeroing_encoder,
             threshold=threshold,
@@ -100,6 +105,7 @@ def build_categorical_feature_encoder_mean(column, target, size_threshold):
 
 class TargetMeanEncoder(TargetCategoryEncoder):
     def __init__(self, columns=None, n_jobs=1, size_threshold=10, true_label=None):
+        self.size_threshold = size_threshold  # param is saved for sklearn.base.clone method
         buider = partial(
             build_categorical_feature_encoder_mean,
             size_threshold=size_threshold
@@ -159,6 +165,7 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
 
 class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
     def __init__(self, columns=None, n_jobs=1, size_threshold=10):
+        self.size_threshold = size_threshold  # param is saved for sklearn.base.clone method
         builder = partial(
             build_categorical_feature_encoder_mean,
             size_threshold=size_threshold

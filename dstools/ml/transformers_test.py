@@ -37,6 +37,13 @@ def test_target_mean_encoder():
     print(dft)
 
 
+def test_target_mean_encoder_clone():
+    from sklearn.base import clone
+    t = TargetMeanEncoder(size_threshold=100)
+    t2 = clone(t)
+    assert(t2.builder.keywords['size_threshold'] == 100)
+
+
 def test_parallel_target_mean_encoder():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
     y = pd.Series([1, 0, 0, 0, 1, 0, 1])
