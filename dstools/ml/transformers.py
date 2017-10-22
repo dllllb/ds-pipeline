@@ -167,6 +167,12 @@ class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
         super(MultiClassTargetShareEncoder, self).__init__(buider, columns, n_jobs)
 
 
+class MultiClassEmpyricalBayesEncoder(MultiClassTargetCategoryEncoder):
+    def __init__(self, columns=None, n_jobs=1):
+        buider = build_categorical_empyrical_bayes_feature_encoder
+        super(MultiClassEmpyricalBayesEncoder, self).__init__(buider, columns, n_jobs)
+
+
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
         field_names = list(map(six.u, field_names))
