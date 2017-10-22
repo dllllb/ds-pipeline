@@ -88,8 +88,7 @@ def build_categorical_feature_encoder_mean(column, target, size_threshold):
     col_dna = column.fillna('nan')
     means = target.groupby(col_dna).mean()
     counts = col_dna.groupby(col_dna).count()
-    category_shares = counts / counts.sum()
-    reg = pd.DataFrame(category_shares / (category_shares + size_threshold))
+    reg = pd.DataFrame(counts / (counts + size_threshold))
     reg[1] = 1.
     reg = reg.min(axis=1)
     means_reg = means * reg + (1-reg) * global_mean
@@ -160,11 +159,11 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
 
 class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
     def __init__(self, columns=None, n_jobs=1, size_threshold=10):
-        buider = partial(
+        builder = partial(
             build_categorical_feature_encoder_mean,
             size_threshold=size_threshold
         )
-        super(MultiClassTargetShareEncoder, self).__init__(buider, columns, n_jobs)
+        super(MultiClassTargetShareEncoder, self).__init__(builder, columns, n_jobs)
 
 
 class MultiClassEmpyricalBayesEncoder(MultiClassTargetCategoryEncoder):
