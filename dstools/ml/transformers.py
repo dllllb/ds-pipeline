@@ -21,7 +21,7 @@ class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
         self.true_label = true_label
         self.builder = builder
 
-    def fit(self, df, y):
+    def fit(self, df, y=None):
         if self.columns is None:
             columns = df.select_dtypes(include=['object'])
         else:
@@ -48,7 +48,7 @@ class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-def build_zeroing_encoder(column, target, threshold, top, placeholder):
+def build_zeroing_encoder(column, __, threshold, top, placeholder):
     vc = column.replace(np.nan, 'nan').value_counts()
     candidates = set(vc[vc <= threshold].index).union(set(vc[top:].index))
     encoder = dict(zip(vc.index, vc.index))
@@ -60,15 +60,6 @@ def build_zeroing_encoder(column, target, threshold, top, placeholder):
 
 
 class HighCardinalityZeroing(TargetCategoryEncoder):
-    """
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
-    >>> HighCardinalityZeroing(2).fit_transform(df).A.tolist()
-    ['a', 'zeroed', 'zeroed', 'a', 'a']
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
-    >>> HighCardinalityZeroing(top=2).fit_transform(df).A.tolist()
-    ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed']
-    """
-
     def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
         buider = partial(
             build_zeroing_encoder,
@@ -80,7 +71,7 @@ class HighCardinalityZeroing(TargetCategoryEncoder):
         super(HighCardinalityZeroing, self).__init__(buider, columns, n_jobs)
 
 
-def build_count_encoder(column, target):
+def build_count_encoder(column, __):
     entries = column.replace(np.nan, 'nan').value_counts()
     entries = entries.sort_values(ascending=False).index
     encoder = dict(zip(entries, range(len(entries))))
@@ -88,12 +79,6 @@ def build_count_encoder(column, target):
 
 
 class CountEncoder(TargetCategoryEncoder):
-    """
-    >>> df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan]})
-    >>> CountEncoder().fit_transform(df).A.tolist()
-    [0, 1, 1, 0, 0, 2]
-    """
-
     def __init__(self, columns=None, n_jobs=1):
         super(CountEncoder, self).__init__(build_count_encoder, columns, n_jobs)
 
@@ -148,7 +133,7 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
         self.n_jobs = n_jobs
         self.builder = buider
 
-    def fit(self, df, y):
+    def fit(self, df, y=None):
         encoded_classes = pd.Series(y).value_counts().index[1:]
 
         if self.columns is None:
@@ -184,11 +169,13 @@ class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
-        field_names = map(six.u, field_names)
-        field_names = map(lambda e: e.lower(), field_names)
+        field_names = list(map(six.u, field_names))
+        field_names = list(map(lambda e: e.lower(), field_names))
 
-        df_cols = map(six.u, df.columns)
-        df_cols = map(lambda e: e.lower(), df_cols)
+        df_cols = list(map(six.u, df.columns))
+        df_cols = list(map(lambda e: e.lower(), df_cols))
+
+        print(df_cols)
 
         col_indexes = [df_cols.index(f) for f in field_names]
         cols = df.columns[col_indexes]
@@ -202,11 +189,6 @@ def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
 
 
 def field_list(field_names, drop_mode=False, ignore_case=True):
-    """
-    >>> df = pd.DataFrame(np.arange(9).reshape((3, -1)), columns=['A', 'B', 'C'])
-    >>> field_list(['a', 'b']).transform(df).columns.tolist()
-    ['A', 'B']
-    """
     f = partial(field_list_func, field_names=field_names, drop_mode=drop_mode, ignore_case=ignore_case)
     return FunctionTransformer(func=f, validate=False)
 
@@ -216,16 +198,11 @@ def days_to_delta_func(df, column_names, base_column):
     base_col_date = pd.to_datetime(df[base_column], errors='coerce')
     for col in column_names:
         days_open = (base_col_date - pd.to_datetime(res[col], errors='coerce')).dropna().dt.days
-        res[col] = days_open # insert is performed by index hence missing records are not written
+        res[col] = days_open  # insert is performed by index hence missing records are not written
     return res
 
 
 def days_to_delta(column_names, base_column):
-    """
-    >>> df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
-    >>> days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
-    [396.0, 216.0, -999.0]
-    """
     f = partial(days_to_delta_func, column_names=column_names, base_column=base_column)
     d2d = FunctionTransformer(func=f, validate=False)
     return d2d

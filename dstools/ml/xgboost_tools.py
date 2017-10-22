@@ -18,7 +18,7 @@ class XGBoostModel(BaseEstimator):
         self.params = params
         self.model = None
 
-    def fit(self, X, y):
+    def fit(self, x, y):
         n_rounds = self.params.get('num_rounds', 100)
         n_es_rounds = self.params.get('num_es_rounds', 50)
         early_stop_share = self.params.get('es_share', 0.05)
@@ -31,12 +31,12 @@ class XGBoostModel(BaseEstimator):
 
         if early_stop_share > 0:
             if ybin_func:
-                split = train_test_split(X, y, test_size=early_stop_share, stratify=ybin_func(y))
+                split = train_test_split(x, y, test_size=early_stop_share, stratify=ybin_func(y))
             else:
                 if objective in ['multi:softprob', 'binary:logistic', 'multi:softmax']:
-                    split = train_test_split(X, y, test_size=early_stop_share, stratify=y)
+                    split = train_test_split(x, y, test_size=early_stop_share, stratify=y)
                 else:
-                    split = train_test_split(X, y, test_size=early_stop_share)
+                    split = train_test_split(x, y, test_size=early_stop_share)
             x_train, x_es, y_train, y_es = split
             dm = xgb.DMatrix(x_train, label=y_train, missing=missing_marker)
             es = xgb.DMatrix(x_es, label=y_es, missing=missing_marker)
@@ -52,12 +52,12 @@ class XGBoostModel(BaseEstimator):
                 obj=obj,
             )
         else:
-            dm = xgb.DMatrix(X, label=y, missing=missing_marker)
+            dm = xgb.DMatrix(x, label=y, missing=missing_marker)
             self.model = xgb.train(self.params, dm, n_rounds, feval=feval)
 
         return self
 
-    def xgb_predict(self, X):
+    def xgb_predict(self, x):
         if not self.model:
             raise AttributeError('model is not created, call fit method first')
 
@@ -68,11 +68,11 @@ class XGBoostModel(BaseEstimator):
 
         if best_iteration:
             if booster == 'gblinear':
-                pred = self.model.predict(xgb.DMatrix(X, missing=missing_marker))
+                pred = self.model.predict(xgb.DMatrix(x, missing=missing_marker))
             else:
-                pred = self.model.predict(xgb.DMatrix(X, missing=missing_marker), ntree_limit=best_iteration)
+                pred = self.model.predict(xgb.DMatrix(x, missing=missing_marker), ntree_limit=best_iteration)
         else:
-            pred = self.model.predict(xgb.DMatrix(X, missing=missing_marker))
+            pred = self.model.predict(xgb.DMatrix(x, missing=missing_marker))
 
         return pred
 
@@ -93,8 +93,8 @@ class XGBoostRegressor(XGBoostModel, RegressorMixin):
     def __init__(self, **params):
         super(XGBoostRegressor, self).__init__(**params)
 
-    def predict(self, X):
-        return self.xgb_predict(X)
+    def predict(self, x):
+        return self.xgb_predict(x)
 
 
 class XGBoostClassifier(XGBoostModel, ClassifierMixin):
@@ -102,13 +102,13 @@ class XGBoostClassifier(XGBoostModel, ClassifierMixin):
         super(XGBoostClassifier, self).__init__(**params)
         self.le = LabelEncoder()
 
-    def fit(self, X, y):
+    def fit(self, x, y):
         y_xgb = self.le.fit_transform(y)
-        super(XGBoostClassifier, self).fit(X, y_xgb)
+        super(XGBoostClassifier, self).fit(x, y_xgb)
         return self
 
-    def predict(self, X):
-        probas = self.predict_proba(X)
+    def predict(self, x):
+        probas = self.predict_proba(x)
 
         if self.params.get('objective') == 'multi:softprob':
             idx = np.argmax(probas, axis=1)
@@ -116,8 +116,8 @@ class XGBoostClassifier(XGBoostModel, ClassifierMixin):
         else:
             return self.le.inverse_transform((probas[:, 1] > .5).astype(np.int8))
 
-    def predict_proba(self, X):
-        pred = self.xgb_predict(X)
+    def predict_proba(self, x):
+        pred = self.xgb_predict(x)
 
         if self.params.get('objective') == 'multi:softprob':
             return pred
