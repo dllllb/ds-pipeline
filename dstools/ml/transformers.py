@@ -59,21 +59,15 @@ def build_zeroing_encoder(column, __, threshold, top, placeholder):
     return encoder
 
 
-class HighCardinalityZeroing(TargetCategoryEncoder):
-    def __init__(self, threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
-        # params are saved for sklearn.base.clone method
-        self.threshold = threshold
-        self.top = top
-        self.placeholder = placeholder
+def high_cardinality_zeroing(threshold=1, top=10000, placeholder='zeroed', columns=None, n_jobs=1):
+    buider = partial(
+        build_zeroing_encoder,
+        threshold=threshold,
+        top=top,
+        placeholder=placeholder
+    )
 
-        buider = partial(
-            build_zeroing_encoder,
-            threshold=threshold,
-            top=top,
-            placeholder=placeholder
-        )
-
-        super(HighCardinalityZeroing, self).__init__(buider, columns, n_jobs)
+    return TargetCategoryEncoder(buider, columns, n_jobs)
 
 
 def build_count_encoder(column, __):
@@ -83,9 +77,8 @@ def build_count_encoder(column, __):
     return encoder
 
 
-class CountEncoder(TargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1):
-        super(CountEncoder, self).__init__(build_count_encoder, columns, n_jobs)
+def count_encoder(columns=None, n_jobs=1):
+    return TargetCategoryEncoder(build_count_encoder, columns, n_jobs)
 
 
 def build_categorical_feature_encoder_mean(column, target, size_threshold):
@@ -103,14 +96,12 @@ def build_categorical_feature_encoder_mean(column, target, size_threshold):
     return encoder
 
 
-class TargetMeanEncoder(TargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1, size_threshold=10, true_label=None):
-        self.size_threshold = size_threshold  # param is saved for sklearn.base.clone method
-        buider = partial(
-            build_categorical_feature_encoder_mean,
-            size_threshold=size_threshold
-        )
-        super(TargetMeanEncoder, self).__init__(buider, columns, n_jobs, true_label)
+def target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=None):
+    buider = partial(
+        build_categorical_feature_encoder_mean,
+        size_threshold=size_threshold
+    )
+    return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
 
 
 def build_categorical_empyrical_bayes_feature_encoder(column, target):
@@ -125,10 +116,9 @@ def build_categorical_empyrical_bayes_feature_encoder(column, target):
     return codes.to_dict()
 
 
-class TargetEmpyricalBayesEncoder(TargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1, true_label=None):
-        buider = build_categorical_empyrical_bayes_feature_encoder
-        super(TargetEmpyricalBayesEncoder, self).__init__(buider, columns, n_jobs, true_label)
+def empyrical_bayes_encoder(columns=None, n_jobs=1, true_label=None):
+    builder = build_categorical_empyrical_bayes_feature_encoder
+    return TargetCategoryEncoder(builder, columns, n_jobs, true_label)
 
 
 class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
@@ -163,20 +153,17 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
         return res
 
 
-class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1, size_threshold=10):
-        self.size_threshold = size_threshold  # param is saved for sklearn.base.clone method
-        builder = partial(
-            build_categorical_feature_encoder_mean,
-            size_threshold=size_threshold
-        )
-        super(MultiClassTargetShareEncoder, self).__init__(builder, columns, n_jobs)
+def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
+    builder = partial(
+        build_categorical_feature_encoder_mean,
+        size_threshold=size_threshold
+    )
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
-class MultiClassEmpyricalBayesEncoder(MultiClassTargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1):
-        buider = build_categorical_empyrical_bayes_feature_encoder
-        super(MultiClassEmpyricalBayesEncoder, self).__init__(buider, columns, n_jobs)
+def multi_class_empyrical_bayes_encoder(columns=None, n_jobs=1):
+    builder = build_categorical_empyrical_bayes_feature_encoder
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):

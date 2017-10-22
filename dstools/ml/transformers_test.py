@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
 
-from dstools.ml.transformers import TargetMeanEncoder
-from dstools.ml.transformers import CountEncoder
+from dstools.ml.transformers import target_mean_encoder
+from dstools.ml.transformers import count_encoder
 from dstools.ml.transformers import field_list
 from dstools.ml.transformers import days_to_delta
-from dstools.ml.transformers import HighCardinalityZeroing
-from dstools.ml.transformers import MultiClassTargetShareEncoder
-from dstools.ml.transformers import TargetEmpyricalBayesEncoder
+from dstools.ml.transformers import high_cardinality_zeroing
+from dstools.ml.transformers import multi_class_target_share_encoder
+from dstools.ml.transformers import empyrical_bayes_encoder
 
 
 def test_multi_class_target_share_encoder():
@@ -20,7 +20,7 @@ def test_multi_class_target_share_encoder():
     counts = pdf.col.value_counts()
     print(pt.divide(counts, axis=0))
 
-    dft = MultiClassTargetShareEncoder().fit_transform(df, y)
+    dft = multi_class_target_share_encoder().fit_transform(df, y)
     dft['A'] = df.A
     print(dft)
 
@@ -32,14 +32,14 @@ def test_target_mean_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = TargetMeanEncoder().fit_transform(df, y)
+    dft = target_mean_encoder().fit_transform(df, y)
     dft['A0'] = df.A
     print(dft)
 
 
 def test_target_mean_encoder_clone():
     from sklearn.base import clone
-    t = TargetMeanEncoder(size_threshold=100)
+    t = target_mean_encoder(size_threshold=100)
     t2 = clone(t)
     assert(t2.builder.keywords['size_threshold'] == 100)
 
@@ -48,7 +48,7 @@ def test_parallel_target_mean_encoder():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
     y = pd.Series([1, 0, 0, 0, 1, 0, 1])
 
-    dft = TargetMeanEncoder(n_jobs=2).fit_transform(df, y)
+    dft = target_mean_encoder(n_jobs=2).fit_transform(df, y)
     dft['A0'] = df.A
     print(dft)
 
@@ -62,23 +62,23 @@ def test_target_bayes_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = TargetEmpyricalBayesEncoder().fit_transform(df, y)
+    dft = empyrical_bayes_encoder().fit_transform(df, y)
     dft['A0'] = df.A
     print(dft)
 
 
 def test_high_cardinality_zeroing():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
-    r = HighCardinalityZeroing(2).fit_transform(df).A.tolist()
+    r = high_cardinality_zeroing(2).fit_transform(df).A.tolist()
     assert(r == ['a', 'zeroed', 'zeroed', 'a', 'a'])
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
-    r = HighCardinalityZeroing(top=2).fit_transform(df).A.tolist()
+    r = high_cardinality_zeroing(top=2).fit_transform(df).A.tolist()
     assert(r == ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed'])
 
 
 def test_count_encoder():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan]})
-    r = CountEncoder().fit_transform(df).A.tolist()
+    r = count_encoder().fit_transform(df).A.tolist()
     assert (r == [0, 1, 1, 0, 0, 2])
 
 
