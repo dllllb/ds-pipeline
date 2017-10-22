@@ -98,13 +98,13 @@ class CountEncoder(TargetCategoryEncoder):
         super(CountEncoder, self).__init__(build_count_encoder, columns, n_jobs)
 
 
-def build_categorical_feature_encoder_mean(column, target, reg_threshold):
+def build_categorical_feature_encoder_mean(column, target, size_threshold):
     global_mean = target.mean()
     col_dna = column.fillna('nan')
     means = target.groupby(col_dna).mean()
     counts = col_dna.groupby(col_dna).count()
     category_shares = counts / counts.sum()
-    reg = pd.DataFrame(category_shares / reg_threshold)
+    reg = pd.DataFrame(category_shares / (category_shares + size_threshold))
     reg[1] = 1.
     reg = reg.min(axis=1)
     means_reg = means * reg + (1-reg) * global_mean
@@ -115,10 +115,10 @@ def build_categorical_feature_encoder_mean(column, target, reg_threshold):
 
 
 class TargetMeanEncoder(TargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001, true_label=None):
+    def __init__(self, columns=None, n_jobs=1, size_threshold=10, true_label=None):
         buider = partial(
             build_categorical_feature_encoder_mean,
-            reg_threshold=reg_threshold
+            size_threshold=size_threshold
         )
         super(TargetMeanEncoder, self).__init__(buider, columns, n_jobs, true_label)
 
@@ -174,10 +174,10 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
 
 
 class MultiClassTargetShareEncoder(MultiClassTargetCategoryEncoder):
-    def __init__(self, columns=None, n_jobs=1, reg_threshold=.00001):
+    def __init__(self, columns=None, n_jobs=1, size_threshold=10):
         buider = partial(
             build_categorical_feature_encoder_mean,
-            reg_threshold=reg_threshold
+            size_threshold=size_threshold
         )
         super(MultiClassTargetShareEncoder, self).__init__(buider, columns, n_jobs)
 
