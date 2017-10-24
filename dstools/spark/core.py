@@ -214,19 +214,13 @@ def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_forma
 def save_to_csv(sdf, data_path, header=True, sep='\t'):
     from csv import DictWriter
 
-    def to_unicode(s):
-        if isinstance(s, unicode):
-            return s.encode('utf8')
-        else:
-            return s
-
     with open(data_path, 'wb') as f:
-        dw = DictWriter(f, [to_unicode(c) for c in sdf.columns], delimiter=sep)
+        dw = DictWriter(f, [c.encode('utf8') for c in sdf.columns], delimiter=sep)
         if header:
             dw.writeheader()
 
         for row in sdf.toLocalIterator():
-            r = dict([(to_unicode(k), to_unicode(w)) for k, w in row.iteritems()])
+            r = dict([(k.encode('utf8'), w.encode('utf8')) for k, w in row.items()])
             dw.writerow(r)
 
 
