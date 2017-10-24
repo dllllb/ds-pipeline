@@ -63,15 +63,24 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
         for features in block_iterator(iterator, 10000):
             features_df = pd.DataFrame(list(features), columns=col_bc.value)
             existing_cols_to_save = list(set(cols_to_save).intersection(features_df.columns))
-            res_df = features_df[existing_cols_to_save].copy()
 
             pred = mdl.predict_proba(features_df)
 
             if pred.shape[1] == 2:
+                res_df = features_df[existing_cols_to_save].copy()
+                if target_class_names is not None:
+                    res_df['label'] = target_class_names[1]
+                else:
+                    res_df['label'] = 'positive'
                 res_df['target_proba'] = pred[:, 1]
             elif target_class_names is not None:
-                for i, n in enumerate(target_class_names):
-                    res_df['target_proba_{}'.format(n)] = pred[:, i]
+                sub_dfs = []
+                for i, label in enumerate(target_class_names):
+                    sub_df = features_df[existing_cols_to_save].copy()
+                    sub_df['target_proba'] = pred[:, i]
+                    sub_df['label'] = label
+                    sub_dfs.append(sub_df)
+                res_df = pd.concat(sub_dfs)
             else:
                 raise AttributeError('target class names are not set')
 

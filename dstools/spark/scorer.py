@@ -55,12 +55,10 @@ score_df = spark_utils.score(
     code_in_pickle=code_in_pickle
 ).cache()
 
-author_name = os.environ.get('USER', '!unknown')
 model_name = os.path.basename(conf['model-path'])
 current_dt = time.strftime("%Y-%m-%dT%H-%M")
 
 score_df = score_df.selectExpr(
-    "'{}' as author".format(author_name),
     "'{}' as model_name".format(model_name),
     "'{}' as current_dt".format(current_dt),
     '*'
