@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import sys
+from os.path import dirname, join as path_join
 
 from pyhocon import ConfigFactory
 
@@ -15,9 +16,11 @@ print('{tm} ------------------- {nm} started'.format(
     nm=os.path.basename(__file__)
 ))
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+module_path = os.path.realpath(__file__)
+root_dir = dirname(dirname(module_path))
+sys.path.append(path_join(root_dir, 'dstools'))
 
-import core as spark_utils
+import spark.core as spark_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)

@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+from os.path import dirname, join as path_join
 
 from pyhocon import ConfigFactory
 
@@ -12,9 +13,13 @@ print('{tm} ------------------- {nm} started'.format(
     nm=os.path.basename(__file__)
 ))
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+module_path = os.path.realpath(__file__)
+root_dir = dirname(dirname(module_path))
+sys.path.append(path_join(root_dir, 'dstools'))
 
-import core as spark_utils
+import spark.core as spark_utils
+
+from spark.metrics import lift_splitted
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
@@ -27,12 +32,16 @@ conf = over_conf.with_fallback(file_conf)
 
 sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf))
 
-print('{tm} moving data...'.format(tm=time.strftime("%Y-%m-%d %H:%M:%S")))
+lift_cov = lift_splitted(
+    sqc,
+    query=conf['source.query'],
+    target=conf['columns.target'],
+    proba=conf['columns.proba'],
+    split_by=conf['columns.split-by'],
+    cost=conf.get('columns.cost', None),
+    n_buckets=int(conf['n_buckets'])
+)
 
-sdf = spark_utils.define_data_frame(conf['source'], sqc)
-spark_utils.write(conf['target'], sdf)
-
-print('data set size: {sz}'.format(sz=sdf.count()))
-print('{tm} download is finished'.format(tm=time.strftime("%Y-%m-%d %H:%M:%S")))
+lift_cov.to_csv(conf['report-path'], sep='\t')
 
 print('execution time: {} sec'.format(time.time() - start))

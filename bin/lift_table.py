@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+from os.path import dirname, join as path_join
 
 from pyhocon import ConfigFactory
 
@@ -12,11 +13,11 @@ print('{tm} ------------------- {nm} started'.format(
     nm=os.path.basename(__file__)
 ))
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+module_path = os.path.realpath(__file__)
+root_dir = dirname(dirname(module_path))
+sys.path.append(path_join(root_dir, 'dstools'))
 
-import core as spark_utils
-
-from metrics import lift_splitted
+import spark.core as spark_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
@@ -29,16 +30,12 @@ conf = over_conf.with_fallback(file_conf)
 
 sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf))
 
-lift_cov = lift_splitted(
-    sqc,
-    query=conf['source.query'],
-    target=conf['columns.target'],
-    proba=conf['columns.proba'],
-    split_by=conf['columns.split-by'],
-    cost=conf.get('columns.cost', None),
-    n_buckets=int(conf['n_buckets'])
-)
+sdf = spark_utils.define_data_frame(conf['source'], sqc)
 
-lift_cov.to_csv(conf['report-path'], sep='\t')
+df = sdf.select('true_target', 'target_proba').toPandas()
+
+lift_cov = ds_utils.lift(df.true_target.astype(int), df.target_proba, n_buckets=100)
+
+lift_cov.to_csv(conf['report-path'], index_label='top', sep='\t')
 
 print('execution time: {} sec'.format(time.time() - start))

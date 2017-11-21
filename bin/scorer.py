@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 import time
-
+from os.path import dirname, join as path_join
 from pyhocon import ConfigFactory
 
 start = time.time()
@@ -13,9 +13,10 @@ print('{tm} ------------------- {nm} started'.format(
 ))
 
 module_path = os.path.realpath(__file__)
-sys.path.append(module_path)
+root_dir = dirname(dirname(module_path))
+sys.path.append(path_join(root_dir, 'dstools'))
 
-import core as spark_utils
+import spark.core as spark_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
