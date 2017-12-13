@@ -13,6 +13,10 @@ def df2dict():
         lambda x: x.to_dict(orient='records'), validate=False)
 
 
+def constant_value_imputer(value):
+    return FunctionTransformer(lambda df: df.fillna(value), validate=False)
+
+
 class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, builder, columns=None, n_jobs=1, true_label=None):
         self.vc = dict()
@@ -104,7 +108,7 @@ def target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=No
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
 
 
-def build_categorical_empyrical_bayes_feature_encoder(column, target):
+def build_categorical_empirical_bayes_feature_encoder(column, target):
     global_pos = target.sum()
     global_count = target.count()
     col_dna = column.fillna('nan')
@@ -116,9 +120,26 @@ def build_categorical_empyrical_bayes_feature_encoder(column, target):
     return codes.to_dict()
 
 
-def empyrical_bayes_encoder(columns=None, n_jobs=1, true_label=None):
-    builder = build_categorical_empyrical_bayes_feature_encoder
+def empirical_bayes_encoder(columns=None, n_jobs=1, true_label=None):
+    builder = build_categorical_empirical_bayes_feature_encoder
     return TargetCategoryEncoder(builder, columns, n_jobs, true_label)
+
+
+def build_categorical_empirical_bayes_feature_encoder_normal_distr(column, target):
+    # https://stats.stackexchange.com/questions/237037/bayesian-updating-with-new-data
+    global_mean, global_var = target.mean(), target.var()
+    col_dna = column.fillna('nan')
+    cat_mean = target.groupby(col_dna).sum()
+    cat_var = target.groupby(col_dna).var()
+
+    codes = (cat_mean*cat_var + global_mean*global_var) / (global_var + cat_var)
+
+    return codes.to_dict()
+
+
+def empirical_bayes_encoder_normal_distr(columns=None, n_jobs=1):
+    builder = build_categorical_empirical_bayes_feature_encoder_normal_distr
+    return TargetCategoryEncoder(builder, columns, n_jobs, true_label=None)
 
 
 class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
@@ -161,8 +182,8 @@ def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
     return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
-def multi_class_empyrical_bayes_encoder(columns=None, n_jobs=1):
-    builder = build_categorical_empyrical_bayes_feature_encoder
+def multi_class_empirical_bayes_encoder(columns=None, n_jobs=1):
+    builder = build_categorical_empirical_bayes_feature_encoder
     return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 

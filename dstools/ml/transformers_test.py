@@ -7,7 +7,8 @@ from dstools.ml.transformers import field_list
 from dstools.ml.transformers import days_to_delta
 from dstools.ml.transformers import high_cardinality_zeroing
 from dstools.ml.transformers import multi_class_target_share_encoder
-from dstools.ml.transformers import empyrical_bayes_encoder
+from dstools.ml.transformers import empirical_bayes_encoder
+from dstools.ml.transformers import empirical_bayes_encoder_normal_distr
 
 
 def test_multi_class_target_share_encoder():
@@ -62,7 +63,21 @@ def test_target_bayes_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = empyrical_bayes_encoder().fit_transform(df, y)
+    dft = empirical_bayes_encoder().fit_transform(df, y)
+    dft['A0'] = df.A
+    print(dft)
+    
+
+def test_target_bayes_encoder_normal_distr():
+    df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
+    y = pd.Series(np.arange(7))
+
+    print('global share: {}'.format(y.mean()))
+
+    means = y.groupby(df.A.fillna('nan')).mean()
+    print(means.sort_values(ascending=False))
+
+    dft = empirical_bayes_encoder_normal_distr().fit_transform(df, y)
     dft['A0'] = df.A
     print(dft)
 
