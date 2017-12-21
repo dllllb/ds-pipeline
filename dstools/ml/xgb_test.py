@@ -75,3 +75,11 @@ def test_classifier_bin_predict():
     preds = est.predict(x_test)
 
     print(zip(preds, y_test))
+
+
+def test_pickle():
+    est = XGBoostClassifier(num_rounds=50, objective='binary:logistic', silent=1)
+    import pickle
+    dump = pickle.dumps(est)
+    est2 = pickle.loads(dump)
+    assert(est2.params['num_rounds'] == 50)
