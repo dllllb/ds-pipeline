@@ -1,5 +1,5 @@
 from h2o.estimators import H2ODeepLearningEstimator, H2OGradientBoostingEstimator, H2OGeneralizedLinearEstimator, \
-    H2ONaiveBayesEstimator, H2ORandomForestEstimator, H2OXGBoostEstimator
+    H2ONaiveBayesEstimator, H2ORandomForestEstimator
 from sklearn.base import BaseEstimator
 import h2o
 import pandas as pd
@@ -14,7 +14,6 @@ class H2ODecorator(BaseEstimator):
             'glm': H2OGeneralizedLinearEstimator,
             'nb': H2ONaiveBayesEstimator,
             'rf': H2ORandomForestEstimator,
-            'xgb': H2OXGBoostEstimator,
         }
 
         self.est_type = est_type
