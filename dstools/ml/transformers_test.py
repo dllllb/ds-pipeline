@@ -84,11 +84,11 @@ def test_target_bayes_encoder_normal_distr():
 
 def test_high_cardinality_zeroing():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
-    r = high_cardinality_zeroing(2).fit_transform(df).A.tolist()
+    r = high_cardinality_zeroing(threshold=2).fit_transform(df).A.tolist()
     assert(r == ['a', 'zeroed', 'zeroed', 'a', 'a'])
-    df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'c', 'c']})
+    df = pd.DataFrame({'A': ['a', 'b', 'b', 'b', 'a', 'a', 'c', 'c']})
     r = high_cardinality_zeroing(top=2).fit_transform(df).A.tolist()
-    assert(r == ['a', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed'])
+    assert(r == ['a', 'b', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed'])
 
 
 def test_count_encoder():
