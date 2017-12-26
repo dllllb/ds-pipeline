@@ -459,3 +459,26 @@ def toPandas(sparkdf, sqlContext, tmpdir='.', verbose=False):
     if verbose:
         print('dropped temporary table: %s' % table_name)
     return df
+
+
+def proportion_samples(sdf, proportions_sdf, count_column='rows_count'):
+    '''Load huge tables from Hive slightly faster than over toPandas in Spark
+    Parameters
+    ----------
+    sdf : spark Dataframe to sample from
+    proportions_sdf : spark Dataframe with counts to sample from sdf
+    count_column: column name with counts, other columns used as statifiers
+ 
+    Returns
+    ----------
+    sampled : spark Dataframe with number of rows lesser or equal proportions_sdf for each strata
+    '''
+    import pyspark.sql.functions as F
+    from pyspark.sql.window import Window
+    groupers = [c for c in proportions_sdf.columns if c != count_column]
+    
+    sampled = sdf.join(proportions_sdf, groupers, how='inner')\
+                .withColumn('rownum', 
+                   F.rowNumber().over(Window.partitionBy(groupers)))\
+                .filter(F.col('rownum') <= F.col(count_column)).drop(count_column).drop('rownum')
+    return sampled
