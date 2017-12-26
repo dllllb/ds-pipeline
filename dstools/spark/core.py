@@ -403,3 +403,82 @@ def jdbc_load(
         conn_params_base['numPartitions'] = str(num_partitions)
     sdf = sqc.read.load(dbtable=_query, **conn_params_base)
     return sdf
+
+
+def hive_to_pandas(query, tmpdir='.', verbose=False):
+    '''Load huge tables from Hive slightly faster than over toPandas in Spark
+    Parameters
+    ----------
+    query : sql query or tablename
+    tmpdir : dir to store temporary csv files while execution
+ 
+    Returns
+    ----------
+    df : pandas Dataframe with query results
+ 
+    Examples
+    ----------
+    # tablename as input
+    df = hive_to_pandas('SANDBOX.S3_MSK_10K_SAMPLE_DATA_TEST', verbose=True)
+    # query as input
+    q = "SELECT uid, actv_strt_tm, tot_data_vol_cnt FROM SANDBOX.S3_MSK_10K_SAMPLE_DATA2 WHERE table_business_date >= '2017-10-01'"
+    df = hive_to_pandas(q, verbose=True)
+    '''
+    import subprocess
+    import tempfile
+    import pandas as pd
+    hive_options = 'set hive.cli.print.header=true; set hive.resultset.use.unique.column.names=false;'
+    if not query.lower().startswith('select'):
+        query = 'SELECT * FROM {}'.format(query)
+    with tempfile.NamedTemporaryFile(dir=tmpdir) as td:
+        if verbose:
+            print('created temporary file: %s' % td.name)
+        cmd = "hive -e '{} {}' > {}".format(hive_options, query.replace("'", "'\\''"), td.name)
+        if verbose:
+            print('cmd: {}'.format(cmd))
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) 
+        output, error = process.communicate()
+        df = pd.read_csv(td.name, sep='\t')
+        if verbose:
+            print('df shape: {}'.format(df.shape))
+        return df
+
+
+def toPandas(sparkdf, sqlContext, tmpdir='.', verbose=False):
+    from random import choice
+    import string
+    # saving temp table
+    postfix = ''.join(choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    table_name = 'tmp_table_'+postfix
+    if verbose:
+        print('created temporary table: %s' % table_name)
+    sparkdf.registerTempTable(table_name)
+    sqlContext.sql('create table {t} as select * from {t}'.format(t=table_name))
+    df = hive_to_pandas(table_name, tmpdir='.', verbose=verbose)
+    sqlContext.sql('drop table {t}'.format(t=table_name))
+    if verbose:
+        print('dropped temporary table: %s' % table_name)
+    return df
+
+
+def proportion_samples(sdf, proportions_sdf, count_column='rows_count'):
+    '''Load huge tables from Hive slightly faster than over toPandas in Spark
+    Parameters
+    ----------
+    sdf : spark Dataframe to sample from
+    proportions_sdf : spark Dataframe with counts to sample from sdf
+    count_column: column name with counts, other columns used as statifiers
+ 
+    Returns
+    ----------
+    sampled : spark Dataframe with number of rows lesser or equal proportions_sdf for each strata
+    '''
+    import pyspark.sql.functions as F
+    from pyspark.sql.window import Window
+    groupers = [c for c in proportions_sdf.columns if c != count_column]
+    
+    sampled = sdf.join(proportions_sdf, groupers, how='inner')\
+                .withColumn('rownum', 
+                   F.rowNumber().over(Window.partitionBy(groupers)))\
+                .filter(F.col('rownum') <= F.col(count_column)).drop(count_column).drop('rownum')
+    return sampled
