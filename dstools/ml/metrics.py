@@ -95,7 +95,7 @@ def lift(target, proba, n_buckets=10):
     import numpy as np
 
     n_records = len(target)
-    bucket_sz = n_records / n_buckets
+    bucket_sz = int(n_records / n_buckets)
 
     counts = np.ones(n_buckets, int)*bucket_sz
     counts[:n_records%n_buckets] += 1
@@ -117,3 +117,18 @@ def lift(target, proba, n_buckets=10):
     ff['cum_lift'] = ff.target_share_cum/target_share
     ff['coverage'] = ff.target_cnt_cum/target_cnt
     return ff
+
+
+def lift_curve(y_true, y_score, nthresholds=500):
+    base_responce = y_true.mean()
+    probs = np.percentile(y_score, np.linspace(0, 100, nthresholds))[::-1]
+    tops = []
+    lifts = []
+    for p in probs:
+        ind = y_score > p
+        tops.append(ind.mean())
+        lifts.append(y_true[ind].mean() / base_responce)
+
+    tops = np.array(tops)
+    lifts = np.array(lifts)
+    return tops, lifts, probs
