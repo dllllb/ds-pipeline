@@ -17,7 +17,7 @@ module_path = os.path.realpath(__file__)
 root_dir = dirname(dirname(module_path))
 sys.path.append(path_join(root_dir, 'dstools'))
 
-import spark.core as spark_utils
+import dstools.spark.core as spark_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
