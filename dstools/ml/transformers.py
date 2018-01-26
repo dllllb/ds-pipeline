@@ -108,6 +108,56 @@ def target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=No
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
 
 
+def build_yandex_mean_encoder(column, target, alpha):
+    global_target_mean = target.mean()
+    col_dna = column.fillna('nan')
+    cat_pos = target.groupby(col_dna).sum()
+    cat_count = col_dna.groupby(col_dna).count()
+
+    codes = (alpha * global_target_mean + cat_pos) / (alpha + cat_count)
+
+    return codes.to_dict()
+
+def yandex_mean_encoder(columns=None, n_jobs=1, alpha=100, true_label=None):
+
+    """
+    Smoothed mean-encoding with custom smoothing strength (alpha)
+    http://learningsys.org/nips17/assets/papers/paper_11.pdf
+    """
+
+    buider = partial(
+        build_yandex_mean_encoder,
+        alpha=alpha,
+    )
+    return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
+
+def build_noisy_mean_encoder(column, target, alpha):
+    noise = np.random.uniform(size=column.shape)
+    col_dna = column.fillna('nan')
+    cat_pos = target.groupby(col_dna).sum()
+    noise = cat_pos.copy()
+    noise.loc[:] = np.random.uniform(size=noise.shape)    
+    cat_count = col_dna.groupby(col_dna).count()
+
+    codes = (alpha * noise + cat_pos) / (alpha + cat_count)
+
+    return codes.to_dict()
+
+def noisy_mean_encoder(columns=None, n_jobs=1, alpha=100, seed=0, true_label=None):
+
+    """
+    Mean-encoding smoothed with noise
+    Avoids overfitting on features with high cardinality
+    """
+
+    np.random.seed(seed)
+    buider = partial(
+        build_noisy_mean_encoder,
+        alpha=alpha,
+    )
+    return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
+
+
 def build_categorical_empirical_bayes_feature_encoder(column, target):
     global_pos = target.sum()
     global_count = target.count()
