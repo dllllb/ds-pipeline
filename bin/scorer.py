@@ -2,10 +2,8 @@ import argparse
 import os
 import sys
 import time
-from os.path import dirname, join as path_join
-from pyhocon import ConfigFactory
 
-import dstools.spark.core as spark_utils
+from pyhocon import ConfigFactory
 
 
 def run_scorer(sc, sqc, conf):
@@ -25,6 +23,7 @@ def run_scorer(sc, sqc, conf):
 
     print('{} loading data...'.format(time.strftime("%Y-%m-%d %H:%M:%S")))
 
+    import dstools.spark.core as spark_utils
     sdf = spark_utils.define_data_frame(conf['source'], sqc)
     sdf = sdf.filter('uid is not null')
     sdf = sdf.withColumn('uid', sdf.uid.astype('string'))
@@ -63,8 +62,8 @@ def run_scorer(sc, sqc, conf):
 
 if __name__ == "__main__":
     module_path = os.path.realpath(__file__)
-    root_dir = dirname(dirname(module_path))
-    sys.path.append(path_join(root_dir, 'dstools'))
+    root_dir = os.path.dirname(os.path.dirname(module_path))
+    sys.path.append(root_dir)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--conf', required=True)
@@ -74,6 +73,8 @@ if __name__ == "__main__":
     overrides = ','.join(overrides)
     over_conf = ConfigFactory.parse_string(overrides)
     conf = over_conf.with_fallback(file_conf)
+
+    import dstools.spark.core as spark_utils
 
     sc, sqc = spark_utils.init_session(conf['spark'], app=os.path.basename(args.conf), return_context=True)
 

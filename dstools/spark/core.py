@@ -27,21 +27,20 @@ def limit(sdf, n_records):
     return res
 
 
-def block_iterator(iterator, size):
-    bucket = list()
-    for e in iterator:
-        bucket.append(e)
-        if len(bucket) >= size:
-            yield bucket
-            bucket = list()
-    if bucket:
-        yield bucket
-
-
 def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pickle=False):
     import json
     from sklearn.externals import joblib
     import pandas as pd
+
+    def block_iterator(iterator, size):
+        bucket = list()
+        for e in iterator:
+            bucket.append(e)
+            if len(bucket) >= size:
+                yield bucket
+                bucket = list()
+        if bucket:
+            yield bucket
 
     if code_in_pickle:
         import dill
@@ -219,7 +218,7 @@ def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_forma
         w = w.format(write_format)
 
     if tname in sdf.sql_ctx.tableNames(db):
-        w.insertInto(table)
+        w.partitionBy(partition_by).insertInto(table)
     else:
         w.saveAsTable(table, partitionBy=partition_by)
 
@@ -312,6 +311,7 @@ def init_spark(config, app=None, use_session=False):
     pyspark_libs = glob(os.path.join(spark_python, 'lib', '*.zip'))
     sys.path.extend(pyspark_libs)
 
+    virtualenv_reqs = config['spark-prop'].get('spark.pyspark.virtualenv.requirements', None)
     if use_session:
         from pyspark.sql import SparkSession
 
@@ -324,6 +324,8 @@ def init_spark(config, app=None, use_session=False):
             builder = builder.config(k, v)
 
         ss = builder.getOrCreate()
+        if virtualenv_reqs is not None:
+            ss.addFile(virtualenv_reqs)
         return ss
     else:
         from pyspark import SparkConf, SparkContext
@@ -332,6 +334,8 @@ def init_spark(config, app=None, use_session=False):
         props = [(k, str(v)) for k, v in prop_list(config['spark-prop']).items()]
         conf.setAll(props)
         sc = SparkContext(conf=conf)
+        if virtualenv_reqs is not None:
+            sc.addFile(virtualenv_reqs)
         return sc
 
 
@@ -463,27 +467,6 @@ def toPandas(sparkdf, sqlContext, tmpdir='.', verbose=False):
     if verbose:
         print('dropped temporary table: %s' % table_name)
     return df
-
-
-def partition_iterator(sdf):
-    import pyspark.sql.functions as F
-    sdf_part = sdf.withColumn('partition', F.spark_partition_id())
-    sdf_part.cache()
-    for part in range(sdf.rdd.getNumPartitions()):
-        yield sdf_part.where(F.col('partition') == part).drop('partition').rdd.toLocalIterator()
-
-
-def toPandasIterative(sparkdf, batch=10000):
-    import pandas as pd
-    if batch == 'partition':
-        part_iter = partition_iterator(sparkdf)
-    else:
-        part_iter = block_iterator(sparkdf.rdd.toLocalIterator(), batch)
-
-    df_list = map(lambda rows: pd.DataFrame.from_records(list(rows),
-                                                         columns=sparkdf.columns),
-                  part_iter)
-    return pd.concat(df_list)
 
 
 def proportion_samples(sdf, proportions_sdf, count_column='rows_count'):
