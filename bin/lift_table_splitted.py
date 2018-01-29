@@ -19,7 +19,7 @@ sys.path.append(path_join(root_dir, 'dstools'))
 
 import dstools.spark.core as spark_utils
 
-from spark.metrics import lift_splitted
+from dstools.spark.metrics import lift_splitted
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
