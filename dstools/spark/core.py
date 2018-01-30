@@ -21,8 +21,8 @@ def pandify(sdf):
 
 
 def limit(sdf, n_records):
-    res = sdf.rdd.zipWithIndex()\
-        .filter(lambda e: e[1] < n_records)\
+    res = sdf.rdd.zipWithIndex() \
+        .filter(lambda e: e[1] < n_records) \
         .map(lambda e: e[0]).toDF()
     return res
 
@@ -88,7 +88,7 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
             for e in json.loads(res_df.to_json(orient='records')):
                 yield e
 
-    scores = sdf.mapPartitions(block_classify)
+    scores = sdf.rdd.mapPartitions(block_classify)
     score_df = scores.toDF()
 
     return score_df
@@ -208,8 +208,8 @@ def write(conf, sdf):
 def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_format=None):
     db, tname = table.split('.')
     if tname in sdf.sql_ctx.tableNames(db):
-        cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).toPandas().result.tolist()
-        column_order = [c.strip() for c in cols]
+        cols = sdf.sql_ctx.sql('show columns in {}'.format(table)).collect()
+        column_order = [c[0].strip() for c in cols]
     else:
         column_order = sdf.columns
 
@@ -218,7 +218,10 @@ def save_to_hive(sdf, table, write_mode='append', partition_by=None, write_forma
     if write_format is not None:
         w = w.format(write_format)
 
-    w.saveAsTable(table, partitionBy=partition_by)
+    if tname in sdf.sql_ctx.tableNames(db):
+        w.partitionBy(partition_by).insertInto(table)
+    else:
+        w.saveAsTable(table, partitionBy=partition_by)
 
 
 def save_to_csv(sdf, data_path, header=True, sep='\t'):
@@ -237,7 +240,7 @@ def save_to_csv(sdf, data_path, header=True, sep='\t'):
 def prop_list(tree, prefix=list()):
     res = dict()
     for k, v in tree.items():
-        path = prefix+[k]
+        path = prefix + [k]
         if isinstance(v, dict):
             res.update(prop_list(v, path))
         else:
@@ -309,6 +312,7 @@ def init_spark(config, app=None, use_session=False):
     pyspark_libs = glob(os.path.join(spark_python, 'lib', '*.zip'))
     sys.path.extend(pyspark_libs)
 
+    virtualenv_reqs = config['spark-prop'].get('spark.pyspark.virtualenv.requirements', None)
     if use_session:
         from pyspark.sql import SparkSession
 
@@ -321,6 +325,8 @@ def init_spark(config, app=None, use_session=False):
             builder = builder.config(k, v)
 
         ss = builder.getOrCreate()
+        if virtualenv_reqs is not None:
+            ss.addFile(virtualenv_reqs)
         return ss
     else:
         from pyspark import SparkConf, SparkContext
@@ -329,6 +335,8 @@ def init_spark(config, app=None, use_session=False):
         props = [(k, str(v)) for k, v in prop_list(config['spark-prop']).items()]
         conf.setAll(props)
         sc = SparkContext(conf=conf)
+        if virtualenv_reqs is not None:
+            sc.addFile(virtualenv_reqs)
         return sc
 
 
@@ -375,12 +383,12 @@ def init_session(config, app=None, return_context=False, overrides=None, use_ses
 
 
 def jdbc_load(
-    sqc,
-    query,
-    conn_params,
-    partition_column=None,
-    num_partitions=10,
-    fetch_size=10000000
+        sqc,
+        query,
+        conn_params,
+        partition_column=None,
+        num_partitions=10,
+        fetch_size=10000000
 ):
     import re
     if re.match('\s*\(.+\)\s+as\s+\w+\s*', query):
@@ -437,7 +445,7 @@ def hive_to_pandas(query, tmpdir='.', verbose=False):
         cmd = "hive -e '{} {}' > {}".format(hive_options, query.replace("'", "'\\''"), td.name)
         if verbose:
             print('cmd: {}'.format(cmd))
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True) 
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
         output, error = process.communicate()
         df = pd.read_csv(td.name, sep='\t')
         if verbose:
@@ -450,7 +458,7 @@ def toPandas(sparkdf, sqlContext, tmpdir='.', verbose=False):
     import string
     # saving temp table
     postfix = ''.join(choice(string.ascii_uppercase + string.digits) for _ in range(6))
-    table_name = 'tmp_table_'+postfix
+    table_name = 'tmp_table_' + postfix
     if verbose:
         print('created temporary table: %s' % table_name)
     sparkdf.registerTempTable(table_name)
@@ -498,11 +506,11 @@ def proportion_samples(sdf, proportions_sdf, count_column='rows_count'):
     import pyspark.sql.functions as F
     from pyspark.sql.window import Window
     groupers = [c for c in proportions_sdf.columns if c != count_column]
-    
-    sampled = sdf.join(proportions_sdf, groupers, how='inner')\
-                .withColumn('rownum', 
-                   F.rowNumber().over(Window.partitionBy(groupers)))\
-                .filter(F.col('rownum') <= F.col(count_column)).drop(count_column).drop('rownum')
+
+    sampled = sdf.join(proportions_sdf, groupers, how='inner') \
+        .withColumn('rownum',
+                    F.rowNumber().over(Window.partitionBy(groupers))) \
+        .filter(F.col('rownum') <= F.col(count_column)).drop(count_column).drop('rownum')
     return sampled
 
 
