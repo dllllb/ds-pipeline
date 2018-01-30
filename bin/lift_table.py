@@ -17,7 +17,9 @@ module_path = os.path.realpath(__file__)
 root_dir = dirname(dirname(module_path))
 sys.path.append(path_join(root_dir, 'dstools'))
 
-import spark.core as spark_utils
+import dstools.spark.core as spark_utils
+
+from dstools.ml.metrics import lift
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--conf', required=True)
@@ -34,7 +36,7 @@ sdf = spark_utils.define_data_frame(conf['source'], sqc)
 
 df = sdf.select('true_target', 'target_proba').toPandas()
 
-lift_cov = ds_utils.lift(df.true_target.astype(int), df.target_proba, n_buckets=100)
+lift_cov = lift(df.true_target.astype(int), df.target_proba, n_buckets=100)
 
 lift_cov.to_csv(conf['report-path'], index_label='top', sep='\t')
 
