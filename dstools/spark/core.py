@@ -42,7 +42,7 @@ def score(sc, sdf, model_path, cols_to_save, target_class_names=None, code_in_pi
     import json
     from sklearn.externals import joblib
     import pandas as pd
-    
+
     if code_in_pickle:
         import dill
         with open(model_path) as f:
@@ -105,7 +105,9 @@ def define_data_frame(conf, sqc):
             query=conf['query'],
             conn_params=conf['conn'],
             partition_column=conf.get('partition-column', None),
-            num_partitions=conf.get('num-partitions', None))
+            num_partitions=conf.get('num-partitions', None),
+            lower_bound=conf.get('lower-bound', None),
+            upper_bound = conf.get('upper-bound', None))
     elif storage == 'local':
         dataset_format = conf.get('dataset-store-format', 'parquet')
         data_path = conf['query']
@@ -383,12 +385,13 @@ def init_session(config, app=None, return_context=False, overrides=None, use_ses
 
 
 def jdbc_load(
-        sqc,
-        query,
-        conn_params,
-        partition_column=None,
-        num_partitions=10,
-        fetch_size=10000000
+    sqc,
+    query,
+    conn_params,
+    partition_column=None,
+    num_partitions=10,
+    lower_bound=None,
+    upper_bound=None,fetch_size=10000000
 ):
     import re
     if re.match('\s*\(.+\)\s+as\s+\w+\s*', query):
@@ -398,17 +401,18 @@ def jdbc_load(
 
     conn_params_base = dict(conn_params)
     if partition_column and num_partitions and num_partitions > 1:
-        min_max_query = '''
-          (select max({part_col}) as max_part, min({part_col}) as min_part
-             from {query}) as g'''.format(part_col=partition_column, query=_query)
-        max_min_df = sqc.read.load(dbtable=min_max_query, **conn_params_base)
-        tuples = max_min_df.rdd.collect()
-        max_part = str(tuples[0].max_part)
-        min_part = str(tuples[0].min_part)
+        if lower_bound is None or upper_bound is None:
+            min_max_query = '''
+              (select max({part_col}) as max_part, min({part_col}) as min_part
+                 from {query}) as g'''.format(part_col=partition_column, query=_query)
+            max_min_df = sqc.read.load(dbtable=min_max_query, **conn_params_base)
+            tuples = max_min_df.rdd.collect()
+            lower_bound = str(tuples[0].max_part)
+            upper_bound = str(tuples[0].min_part)
         conn_params_base['fetchSize'] = str(fetch_size)
         conn_params_base['partitionColumn'] = partition_column
-        conn_params_base['lowerBound'] = min_part
-        conn_params_base['upperBound'] = max_part
+        conn_params_base['lowerBound'] = lower_bound
+        conn_params_base['upperBound'] = upper_bound
         conn_params_base['numPartitions'] = str(num_partitions)
     sdf = sqc.read.load(dbtable=_query, **conn_params_base)
     return sdf
