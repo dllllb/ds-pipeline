@@ -21,6 +21,8 @@ class XGBoostModel(BaseEstimator):
     def fit(self, x, y):
         n_rounds = self.params.get('num_rounds', 100)
         n_es_rounds = self.params.get('num_es_rounds', 50)
+        if n_es_rounds == 0:
+            n_es_rounds = None
         early_stop_share = self.params.get('es_share', 0.05)
         feval = self.params.get('eval_func')
         maximize_eval = self.params.get('maximize_eval', False)
