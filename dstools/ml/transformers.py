@@ -54,7 +54,7 @@ class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
 
 def build_zeroing_encoder(column, __, threshold, top, placeholder):
     vc = column.replace(np.nan, 'nan').value_counts()
-    candidates = set(vc[vc <= threshold].index).union(set(vc[top:].index))
+    candidates = set(vc[vc > threshold].index).union(set(vc[top:].index))
     encoder = dict(zip(vc.index, vc.index))
     if 'nan' in encoder:
         encoder['nan'] = np.nan
