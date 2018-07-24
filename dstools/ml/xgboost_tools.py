@@ -21,8 +21,11 @@ class XGBoostModel(BaseEstimator):
     def fit(self, x, y):
         n_rounds = self.params.get('num_rounds', 100)
         n_es_rounds = self.params.get('num_es_rounds', 50)
+        if n_es_rounds == 0:
+            n_es_rounds = None
         early_stop_share = self.params.get('es_share', 0.05)
         feval = self.params.get('eval_func')
+        maximize_eval = self.params.get('maximize_eval', False)
         obj = self.params.get('objective_func')
         missing_marker = self.params.get('missing_marker', np.NaN)
         ybin_func = self.params.get('ybin_func')
@@ -48,7 +51,7 @@ class XGBoostModel(BaseEstimator):
                 verbose_eval=verbose,
                 early_stopping_rounds=n_es_rounds,
                 feval=feval,
-                maximize=False,
+                maximize=maximize_eval,
                 obj=obj,
             )
         else:
