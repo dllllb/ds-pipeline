@@ -123,39 +123,6 @@ spark: {
 report-path: report.csv
 ```
 
-## lift_table_splitted.py
-
-Save tab-separated file with calculated lift over split columns
-Requires:
-- Spark configuration
-- data source - rewrite where clause, please
-- split_cols - columns to split by
-- target (binary) column
-- probabilities for target=1
-- n_buckets - number of tiles to display in lift function
-
-Example configuration:
-```
-source: {
-  storage: hive
-  query: "SELECT * FROM scoring_results"
-}
-
-columns: {
-  split_by: "model_name, business_dt"
-  target: true_target
-  proba: target_proba
-}
-
-n_buckets: 100
-
-spark: {
-  include "conf/spark-yarn.conf"
-}
-
-report-path: report.csv
-```
-
 # Common configuration structure
 
 [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) format is used for configuration files

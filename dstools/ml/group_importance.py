@@ -43,15 +43,3 @@ def top_features_in_cluster(f_clusters, f_weights):
     wfct = wfc.reset_index().set_index('index')
     top_features = wfct.ix[wfct.groupby('cluster').weight.idxmax()].sort_values('weight', ascending=False)
     return top_features.weight
-
-
-def xgboost_named_weights(xgb_weights, feature_names):
-    import pandas as pd
-    empty_scores = [('f'+str(e), 0) for e in range(len(feature_names))]
-    scores = dict(empty_scores)
-    scores.update(xgb_weights)
-
-    weights = [v for k, v in sorted([(int(k[1:]), v) for k, v in scores.items()], key=lambda e: e[0])]
-
-    feature_weights = pd.Series(weights, index=feature_names).sort_values(ascending=False)
-    return feature_weights
