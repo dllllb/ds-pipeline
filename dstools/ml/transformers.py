@@ -201,7 +201,8 @@ def empirical_bayes_encoder(columns=None, n_jobs=1, true_label=None, prior_est_f
 
 def build_empirical_bayes_vibrant_encoder(column, target, prior_est_frac=1):
     if prior_est_frac < .999:
-        taret_subsample = target.subsample(prior_est_frac)
+        sample = np.random.randint(0, len(target), int(len(target)*prior_est_frac))
+        taret_subsample = target.iloc[sample]
     else:
         taret_subsample = target
 
