@@ -6,12 +6,13 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import FunctionTransformer, Imputer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing.label import LabelBinarizer
 
 from dstools.ml.experiment import run_experiment
 from dstools.ml.transformers import empirical_bayes_encoder, multi_class_empirical_bayes_encoder
 from dstools.ml.transformers import count_encoder
 from dstools.ml.transformers import empirical_bayes_vibrant_encoder, mc_empirical_bayes_vibrant_encoder
+from dstools.ml.transformers import yandex_mean_encoder, mc_yandex_mean_encoder
+from dstools.ml.transformers import noisy_mean_encoder, mc_noisy_mean_encoder
 
 
 def default_estimator(params):
@@ -37,6 +38,17 @@ def default_estimator(params):
             transf = empirical_bayes_vibrant_encoder(prior_est_frac=.3)
     elif category_encoding == 'count':
         transf = count_encoder()
+    elif category_encoding == 'yandex_mean':
+        if multi_class:
+            transf = mc_yandex_mean_encoder()
+        else:
+            transf = yandex_mean_encoder()
+    elif category_encoding == 'noisy_mean':
+        if multi_class:
+            transf = mc_noisy_mean_encoder()
+        else:
+            transf = noisy_mean_encoder()
+
 
     transf = make_pipeline(transf, Imputer(strategy=params['imputation']))
 

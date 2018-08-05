@@ -124,6 +124,14 @@ def target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=No
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
 
 
+def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
+    builder = partial(
+        build_categorical_feature_encoder_mean,
+        size_threshold=size_threshold
+    )
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
+
+
 def build_yandex_mean_encoder(column, target, alpha):
     global_target_mean = target.mean()
     col_dna = column.fillna('nan')
@@ -147,6 +155,14 @@ def yandex_mean_encoder(columns=None, n_jobs=1, alpha=100, true_label=None):
         alpha=alpha,
     )
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
+
+
+def mc_yandex_mean_encoder(columns=None, n_jobs=1, alpha=100):
+    buider = partial(
+        build_yandex_mean_encoder,
+        alpha=alpha,
+    )
+    return MultiClassTargetCategoryEncoder(buider, columns, n_jobs)
 
 
 def build_noisy_mean_encoder(column, target, alpha):
@@ -177,6 +193,15 @@ def noisy_mean_encoder(columns=None, n_jobs=1, alpha=100, seed=0, true_label=Non
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
 
 
+def mc_noisy_mean_encoder(columns=None, n_jobs=1, alpha=100, seed=0):
+    np.random.seed(seed)
+    buider = partial(
+        build_noisy_mean_encoder,
+        alpha=alpha,
+    )
+    return MultiClassTargetCategoryEncoder(buider, columns, n_jobs)
+
+
 def build_empirical_bayes_encoder(column, target, prior_est_frac=.1):
     if prior_est_frac < .999:
         taret_subsample = target.subsample(prior_est_frac)
@@ -197,6 +222,11 @@ def build_empirical_bayes_encoder(column, target, prior_est_frac=.1):
 def empirical_bayes_encoder(columns=None, n_jobs=1, true_label=None, prior_est_frac=1):
     builder = partial(build_empirical_bayes_encoder, prior_est_frac=prior_est_frac)
     return TargetCategoryEncoder(builder, columns, n_jobs, true_label)
+
+
+def multi_class_empirical_bayes_encoder(columns=None, n_jobs=1, prior_est_frac=1):
+    builder = partial(build_empirical_bayes_encoder, prior_est_frac=prior_est_frac)
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
 def build_empirical_bayes_vibrant_encoder(column, target, prior_est_frac=1):
@@ -226,6 +256,11 @@ def build_empirical_bayes_vibrant_encoder(column, target, prior_est_frac=1):
 def empirical_bayes_vibrant_encoder(columns=None, n_jobs=1, true_label=None, prior_est_frac=1):
     builder = partial(build_empirical_bayes_vibrant_encoder, prior_est_frac=prior_est_frac)
     return TargetCategoryEncoder(builder, columns, n_jobs, true_label)
+
+
+def mc_empirical_bayes_vibrant_encoder(columns=None, n_jobs=1, prior_est_frac=1):
+    builder = partial(build_empirical_bayes_vibrant_encoder, prior_est_frac=prior_est_frac)
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
 def build_empirical_bayes_encoder_normal(column, target):
@@ -275,24 +310,6 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
 
         res = res.drop(self.columns, axis=1)
         return res
-
-
-def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
-    builder = partial(
-        build_categorical_feature_encoder_mean,
-        size_threshold=size_threshold
-    )
-    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
-
-
-def multi_class_empirical_bayes_encoder(columns=None, n_jobs=1, prior_est_frac=1):
-    builder = partial(build_empirical_bayes_encoder, prior_est_frac=prior_est_frac)
-    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
-
-
-def mc_empirical_bayes_vibrant_encoder(columns=None, n_jobs=1, prior_est_frac=1):
-    builder = partial(build_empirical_bayes_vibrant_encoder, prior_est_frac=prior_est_frac)
-    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):

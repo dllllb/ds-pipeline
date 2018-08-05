@@ -50,5 +50,35 @@
         "max_depth": 4,
         "max_features": "auto",
         "category_encoding": "empirical_bayes_vibrant"
+    },
+    {
+        "score-mean": 0.8675085624778249,
+        "score-std": 0.02637100095960447,
+        "exec-time-sec": 0.9972097873687744,
+        "est_type": "rf",
+        "valid_type": "cv",
+        "n_folds": 5,
+        "n_jobs": 1,
+        "n_estimators": 50,
+        "max_depth": 4,
+        "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": false,
+        "category_encoding": "yandex_mean"
+    },
+    {
+        "score-mean": 0.8674684199748726,
+        "score-std": 0.02449019222438648,
+        "exec-time-sec": 0.6781201362609863,
+        "est_type": "rf",
+        "valid_type": "cv",
+        "n_folds": 5,
+        "n_jobs": 1,
+        "n_estimators": 50,
+        "max_depth": 4,
+        "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": false,
+        "category_encoding": "noisy_mean"
     }
 ]
