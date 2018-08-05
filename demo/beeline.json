@@ -1,8 +1,8 @@
 [
     {
-        "score-mean": 0.8668297625827719,
-        "score-std": 0.022149993775088927,
-        "exec-time-sec": 0.6879489421844482,
+        "score-mean": 0.5817929652527983,
+        "score-std": 0.011269438387248754,
+        "exec-time-sec": 13.055458784103394,
         "est_type": "rf",
         "valid_type": "cv",
         "n_folds": 5,
@@ -10,25 +10,14 @@
         "n_estimators": 50,
         "max_depth": 4,
         "max_features": "auto",
-        "category_encoding": "onehot"
-    },
-    {
-        "score-mean": 0.8675739640237282,
-        "score-std": 0.02296228410572895,
-        "exec-time-sec": 0.5046510696411133,
-        "est_type": "rf",
-        "valid_type": "cv",
-        "n_folds": 5,
-        "n_jobs": 1,
-        "n_estimators": 50,
-        "max_depth": 4,
-        "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": true,
         "category_encoding": "count"
     },
     {
-        "score-mean": 0.8672684113715109,
-        "score-std": 0.02648045474524789,
-        "exec-time-sec": 0.9892449378967285,
+        "score-mean": 0.4516833561807214,
+        "score-std": 0.02009571540862738,
+        "exec-time-sec": 49.075249910354614,
         "est_type": "rf",
         "valid_type": "cv",
         "n_folds": 5,
@@ -36,12 +25,29 @@
         "n_estimators": 50,
         "max_depth": 4,
         "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": true,
+        "category_encoding": "onehot"
+    },
+    {
+        "score-mean": 0.5249022234905893,
+        "score-std": 0.005784298477201642,
+        "exec-time-sec": 20.421090126037598,
+        "est_type": "rf",
+        "valid_type": "cv",
+        "n_folds": 5,
+        "n_jobs": 1,
+        "n_estimators": 50,
+        "max_depth": 4,
+        "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": true,
         "category_encoding": "empirical_bayes"
     },
     {
-        "score-mean": 0.8666819198579094,
-        "score-std": 0.01782345650570598,
-        "exec-time-sec": 2.045323133468628,
+        "score-mean": 0.5710963078783268,
+        "score-std": 0.00725394284243243,
+        "exec-time-sec": 1007.7855830192566,
         "est_type": "rf",
         "valid_type": "cv",
         "n_folds": 5,
@@ -49,6 +55,8 @@
         "n_estimators": 50,
         "max_depth": 4,
         "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": true,
         "category_encoding": "empirical_bayes_vibrant"
     }
 ]

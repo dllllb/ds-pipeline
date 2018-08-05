@@ -246,11 +246,11 @@ def empirical_bayes_encoder_normal(columns=None, n_jobs=1):
 
 
 class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, buider, columns=None, n_jobs=1):
+    def __init__(self, builder, columns=None, n_jobs=1):
         self.class_encodings = dict()
         self.columns = columns
         self.n_jobs = n_jobs
-        self.builder = buider
+        self.builder = builder
 
     def fit(self, df, y=None):
         encoded_classes = pd.Series(y).value_counts().index[1:]
@@ -287,6 +287,11 @@ def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
 
 def multi_class_empirical_bayes_encoder(columns=None, n_jobs=1, prior_est_frac=1):
     builder = partial(build_empirical_bayes_encoder, prior_est_frac=prior_est_frac)
+    return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
+
+
+def mc_empirical_bayes_vibrant_encoder(columns=None, n_jobs=1, prior_est_frac=1):
+    builder = partial(build_empirical_bayes_vibrant_encoder, prior_est_frac=prior_est_frac)
     return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
 
 

@@ -10,6 +10,7 @@ from dstools.ml.transformers import multi_class_target_share_encoder
 from dstools.ml.transformers import empirical_bayes_encoder
 from dstools.ml.transformers import empirical_bayes_vibrant_encoder
 from dstools.ml.transformers import empirical_bayes_encoder_normal
+from dstools.ml.transformers import multi_class_empirical_bayes_encoder
 
 
 def test_multi_class_target_share_encoder():
@@ -25,6 +26,22 @@ def test_multi_class_target_share_encoder():
     dft = multi_class_target_share_encoder().fit_transform(df, y)
     dft['A'] = df.A
     print(dft)
+
+
+def test_multi_class_empyrical_bayes_encoder():
+    df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
+    y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
+
+    pdf = pd.DataFrame({'col': df.A.fillna('nan'), 'target': y})
+    pdf["value"] = 1
+    pt = pdf.pivot_table(index='col', columns='target', aggfunc='count', fill_value=0)
+    counts = pdf.col.value_counts()
+    print(pt.divide(counts, axis=0))
+
+    dft = multi_class_empirical_bayes_encoder().fit_transform(df, y)
+    dft['A'] = df.A
+    print(dft)
+
 
 
 def test_target_mean_encoder():
