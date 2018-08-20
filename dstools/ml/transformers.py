@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.externals.joblib import Parallel, delayed
 import numpy as np
@@ -33,6 +34,11 @@ def beta_encoder(vals, mapping):
     return res
 
 
+def kfold_category_encoder(df, y, builder, columns=None, n_jobs=1, true_label=None, n_folds=3):
+    kf = KFold(n_folds)
+    kf
+
+
 class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, builder, columns=None, n_jobs=1, true_label=None):
         self.vc = dict()
@@ -65,6 +71,53 @@ class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
         res = df.copy()
         for col, encoder in self.vc.items():
             res[col] = encoder(res[col])
+        return res
+
+
+def kfold_encoder(builder, col, kf, target):
+    res = col.copy()
+    for train_idx, test_idx in kf.split(col):
+        encoder = builder(col[train_idx], target)
+        res[test_idx] = encoder(res[test_idx])
+    return res
+
+
+class KFoldTargetCategoryEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, builder, columns=None, n_jobs=1, true_label=None, n_folds=3):
+        self.vc = dict()
+        self.columns = columns
+        self.n_jobs = n_jobs
+        self.true_label = true_label
+        self.builder = builder
+        self.n_folds = n_folds
+
+    def fit(self, df, y=None):
+        return self
+
+    def fit_transform(self, df, y=None, **kwargs):
+        if self.columns is None:
+            columns = df.select_dtypes(include=['object'])
+        else:
+            columns = self.columns
+
+        if self.true_label is not None:
+            target = (y == self.true_label)
+        else:
+            target = y
+
+        kf = KFold(self.n_folds)
+
+        encoded_cols = Parallel(n_jobs=self.n_jobs)(
+            delayed(
+                kfold_encoder
+            )(self.builder, df[col], kf, target)
+            for col in columns
+        )
+
+        res = df.copy()
+        for col, vals in zip(columns, encoded_cols):
+            res[col] = vals
+
         return res
 
 
@@ -122,6 +175,14 @@ def target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=No
         size_threshold=size_threshold
     )
     return TargetCategoryEncoder(buider, columns, n_jobs, true_label)
+
+
+def kfold_target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, true_label=None, n_folds=3):
+    buider = partial(
+        build_categorical_feature_encoder_mean,
+        size_threshold=size_threshold
+    )
+    return KFoldTargetCategoryEncoder(buider, columns, n_jobs, true_label, n_folds)
 
 
 def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):

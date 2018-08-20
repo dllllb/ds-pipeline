@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from dstools.ml.transformers import target_mean_encoder
+from dstools.ml.transformers import kfold_target_mean_encoder
 from dstools.ml.transformers import count_encoder
 from dstools.ml.transformers import field_list
 from dstools.ml.transformers import days_to_delta
@@ -23,7 +24,7 @@ def test_multi_class_target_share_encoder():
     counts = pdf.col.value_counts()
     print(pt.divide(counts, axis=0))
 
-    dft = multi_class_target_share_encoder().fit_transform(df, y)
+    dft = multi_class_target_share_encoder().fit_transform(df, y, )
     dft['A'] = df.A
     print(dft)
 
@@ -38,10 +39,9 @@ def test_multi_class_empyrical_bayes_encoder():
     counts = pdf.col.value_counts()
     print(pt.divide(counts, axis=0))
 
-    dft = multi_class_empirical_bayes_encoder().fit_transform(df, y)
+    dft = multi_class_empirical_bayes_encoder().fit_transform(df, y, )
     dft['A'] = df.A
     print(dft)
-
 
 
 def test_target_mean_encoder():
@@ -51,7 +51,7 @@ def test_target_mean_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = target_mean_encoder().fit_transform(df, y)
+    dft = target_mean_encoder().fit_transform(df, y, )
     dft['A0'] = df.A
     print(dft)
 
@@ -67,7 +67,19 @@ def test_parallel_target_mean_encoder():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
     y = pd.Series([1, 0, 0, 0, 1, 0, 1])
 
-    dft = target_mean_encoder(n_jobs=2).fit_transform(df, y)
+    dft = target_mean_encoder(n_jobs=2).fit_transform(df, y, )
+    dft['A0'] = df.A
+    print(dft)
+
+
+def test_kfold_target_mean_encoder():
+    df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan, np.nan]})
+    y = pd.Series([1, 0, 0, 0, 1, 0, 1])
+
+    means = y.groupby(df.A.fillna('nan')).mean()
+    print(means.sort_values(ascending=False))
+
+    dft = kfold_target_mean_encoder(n_folds=2).fit_transform(df, y)
     dft['A0'] = df.A
     print(dft)
 
@@ -81,7 +93,7 @@ def test_target_bayes_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = empirical_bayes_encoder().fit_transform(df, y)
+    dft = empirical_bayes_encoder().fit_transform(df, y, )
     dft['A0'] = df.A
     print(dft)
 
@@ -95,7 +107,7 @@ def test_bayes_vibrant_encoder():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = empirical_bayes_vibrant_encoder().fit_transform(df, y)
+    dft = empirical_bayes_vibrant_encoder().fit_transform(df, y, )
     dft['A0'] = df.A
     print(dft)
 
@@ -109,23 +121,23 @@ def test_target_bayes_encoder_normal_distr():
     means = y.groupby(df.A.fillna('nan')).mean()
     print(means.sort_values(ascending=False))
 
-    dft = empirical_bayes_encoder_normal().fit_transform(df, y)
+    dft = empirical_bayes_encoder_normal().fit_transform(df, y, )
     dft['A0'] = df.A
     print(dft)
 
 
 def test_high_cardinality_zeroing():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a']})
-    r = high_cardinality_zeroing(threshold=2).fit_transform(df).A.tolist()
+    r = high_cardinality_zeroing(threshold=2).fit_transform(df, ).A.tolist()
     assert(r == ['a', 'zeroed', 'zeroed', 'a', 'a'])
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'b', 'a', 'a', 'c', 'c']})
-    r = high_cardinality_zeroing(top=2).fit_transform(df).A.tolist()
+    r = high_cardinality_zeroing(top=2).fit_transform(df, ).A.tolist()
     assert(r == ['a', 'b', 'b', 'b', 'a', 'a', 'zeroed', 'zeroed'])
 
 
 def test_count_encoder():
     df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', np.nan]})
-    r = count_encoder().fit_transform(df).A.tolist()
+    r = count_encoder().fit_transform(df, ).A.tolist()
     assert (r == [0, 1, 1, 0, 0, 2])
 
 
@@ -137,5 +149,5 @@ def test_field_list():
 
 def test_days_to_delta():
     df = pd.DataFrame({'A': ['2015-01-02', '2016-03-20', '42'], 'B': ['2016-02-02', '2016-10-22', '2016-10-22']})
-    r = days_to_delta(['A'], 'B').fit_transform(df).A.fillna(-999).tolist()
+    r = days_to_delta(['A'], 'B').fit_transform(df, ).A.fillna(-999).tolist()
     assert(r == [396.0, 216.0, -999.0])
