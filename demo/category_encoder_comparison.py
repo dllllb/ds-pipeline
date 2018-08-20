@@ -13,6 +13,7 @@ from dstools.ml.transformers import count_encoder
 from dstools.ml.transformers import empirical_bayes_vibrant_encoder, mc_empirical_bayes_vibrant_encoder
 from dstools.ml.transformers import yandex_mean_encoder, mc_yandex_mean_encoder
 from dstools.ml.transformers import noisy_mean_encoder, mc_noisy_mean_encoder
+from dstools.ml.transformers import kfold_target_mean_encoder
 
 
 def default_estimator(params):
@@ -48,6 +49,11 @@ def default_estimator(params):
             transf = mc_noisy_mean_encoder()
         else:
             transf = noisy_mean_encoder()
+    elif category_encoding == 'kfold_mean':
+        if multi_class:
+            raise NotImplemented()
+        else:
+            transf = kfold_target_mean_encoder()
 
 
     transf = make_pipeline(transf, Imputer(strategy=params['imputation']))

@@ -77,24 +77,19 @@ class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
 def kfold_encoder(builder, col, kf, target):
     res = col.copy()
     for train_idx, test_idx in kf.split(col):
-        encoder = builder(col[train_idx], target)
-        res[test_idx] = encoder(res[test_idx])
+        encoder = builder(col.iloc[train_idx], target.iloc[train_idx])
+        res.iloc[test_idx] = encoder(res.iloc[test_idx])
     return res
 
 
-class KFoldTargetCategoryEncoder(BaseEstimator, TransformerMixin):
+class KFoldTargetCategoryEncoder(TargetCategoryEncoder):
     def __init__(self, builder, columns=None, n_jobs=1, true_label=None, n_folds=3):
-        self.vc = dict()
-        self.columns = columns
-        self.n_jobs = n_jobs
-        self.true_label = true_label
-        self.builder = builder
+        super(KFoldTargetCategoryEncoder, self).__init__(builder, columns, n_jobs, true_label)
         self.n_folds = n_folds
 
-    def fit(self, df, y=None):
-        return self
-
     def fit_transform(self, df, y=None, **kwargs):
+        self.fit(df, y)
+
         if self.columns is None:
             columns = df.select_dtypes(include=['object'])
         else:
