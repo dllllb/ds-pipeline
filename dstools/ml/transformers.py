@@ -34,11 +34,6 @@ def beta_encoder(vals, mapping):
     return res
 
 
-def kfold_category_encoder(df, y, builder, columns=None, n_jobs=1, true_label=None, n_folds=3):
-    kf = KFold(n_folds)
-    kf
-
-
 class TargetCategoryEncoder(BaseEstimator, TransformerMixin):
     def __init__(self, builder, columns=None, n_jobs=1, true_label=None):
         self.vc = dict()
@@ -186,6 +181,14 @@ def multi_class_target_share_encoder(columns=None, n_jobs=1, size_threshold=10):
         size_threshold=size_threshold
     )
     return MultiClassTargetCategoryEncoder(builder, columns, n_jobs)
+
+
+def mc_kfold_target_mean_encoder(columns=None, n_jobs=1, size_threshold=10, n_folds=3):
+    buider = partial(
+        build_categorical_feature_encoder_mean,
+        size_threshold=size_threshold
+    )
+    return MultiClassKFoldTargetCategoryEncoder(buider, columns, n_jobs, n_folds)
 
 
 def build_yandex_mean_encoder(column, target, alpha):
@@ -365,6 +368,39 @@ class MultiClassTargetCategoryEncoder(BaseEstimator, TransformerMixin):
                 res['{}_{}'.format(col, cls)] = encoder(res[col])
 
         res = res.drop(self.columns, axis=1)
+        return res
+
+
+class MultiClassKFoldTargetCategoryEncoder(MultiClassTargetCategoryEncoder):
+    def __init__(self, builder, columns=None, n_jobs=1, n_folds=3):
+        super(MultiClassKFoldTargetCategoryEncoder, self).__init__(builder, columns, n_jobs)
+        self.n_folds = n_folds
+
+    def fit_transform(self, df, y=None, **kwargs):
+        self.fit(df, y)
+
+        encoded_classes = pd.Series(y).value_counts().index[1:]
+
+        if self.columns is None:
+            self.columns = df.select_dtypes(include=['object'])
+
+        kf = KFold(self.n_folds)
+
+        encoded_cols = []
+        for cl in encoded_classes:
+            class_cols = Parallel(n_jobs=self.n_jobs)(
+                delayed(kfold_encoder)(self.builder, df[col], kf, pd.Series(y == cl))
+                for col in self.columns
+            )
+            col_names = ['{}_{}'.format(col, cl) for col in self.columns]
+            encoded_cols.extend(list(zip(col_names, class_cols)))
+
+        res = df.copy()
+        res = res.drop(self.columns, axis=1)
+
+        for col, vals in encoded_cols:
+            res[col] = vals
+
         return res
 
 

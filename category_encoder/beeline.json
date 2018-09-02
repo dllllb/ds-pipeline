@@ -88,5 +88,20 @@
         "imputation": "most_frequent",
         "multi_class": true,
         "category_encoding": "noisy_mean"
+    },
+    {
+        "score-mean": 0.5688950559014359,
+        "score-std": 0.013458236117627524,
+        "exec-time-sec": 33.665706157684326,
+        "est_type": "rf",
+        "valid_type": "cv",
+        "n_folds": 5,
+        "n_jobs": 1,
+        "n_estimators": 50,
+        "max_depth": 4,
+        "max_features": "auto",
+        "imputation": "most_frequent",
+        "multi_class": true,
+        "category_encoding": "kfold_mean"
     }
 ]

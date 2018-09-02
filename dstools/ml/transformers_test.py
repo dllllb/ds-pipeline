@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 from dstools.ml.transformers import target_mean_encoder
+from dstools.ml.transformers import mc_kfold_target_mean_encoder
 from dstools.ml.transformers import kfold_target_mean_encoder
 from dstools.ml.transformers import count_encoder
 from dstools.ml.transformers import field_list
@@ -25,6 +26,21 @@ def test_multi_class_target_share_encoder():
     print(pt.divide(counts, axis=0))
 
     dft = multi_class_target_share_encoder().fit_transform(df, y, )
+    dft['A'] = df.A
+    print(dft)
+
+
+def test_multi_class_kfold_encoder():
+    df = pd.DataFrame({'A': ['a', 'b', 'b', 'a', 'a', 'b', np.nan, np.nan, 'b']})
+    y = np.array([1, 2, 0, 0, 1, 2, 0, 1, 0])
+
+    pdf = pd.DataFrame({'col': df.A.fillna('nan'), 'target': y})
+    pdf["value"] = 1
+    pt = pdf.pivot_table(index='col', columns='target', aggfunc='count', fill_value=0)
+    counts = pdf.col.value_counts()
+    print(pt.divide(counts, axis=0))
+
+    dft = mc_kfold_target_mean_encoder().fit_transform(df, y, )
     dft['A'] = df.A
     print(dft)
 
