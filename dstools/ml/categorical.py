@@ -213,7 +213,6 @@ def mc_yandex_mean_encoder(columns=None, n_jobs=1, alpha=100):
 
 
 def build_noisy_mean_encoder(column, target, alpha):
-    noise = np.random.uniform(size=column.shape)
     col_dna = column.fillna('nan')
     cat_pos = target.groupby(col_dna).sum()
     noise = cat_pos.copy()
