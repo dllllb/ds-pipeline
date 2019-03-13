@@ -5,4 +5,4 @@ demo/spark-warehouse/
 **/__pycache__/
 .pytest_cache
 .DS_Store
-
+.vscode
