@@ -71,7 +71,7 @@ def default_estimator(params):
     return make_pipeline(transf, est)
 
 
-def titanic_dataet(params):
+def titanic_dataset(params):
     import os
     df = pd.read_csv(f'{os.path.dirname(__file__)}/titanic.csv')
     df = df.replace(r'\s+', np.nan, regex=True)
@@ -92,7 +92,8 @@ def titanic_experiment(overrides):
         'multi_class': False,
     }
     params = {**titanic_params, **overrides}
-    run_experiment(default_estimator, titanic_dataet, 'roc_auc', params, 'titanic.json')
+    results = run_experiment(default_estimator, titanic_dataset, 'roc_auc', params, 'titanic.json')
+    update_model_stats('titanic.json', params, results)
 
 
 def beeline_dataset(params):
@@ -114,4 +115,5 @@ def beeline_experiment(overrides):
         'multi_class': True,
     }
     params = {**titanic_params, **overrides}
-    run_experiment(default_estimator, beeline_dataset, 'accuracy', params, 'beeline.json')
+    results = run_experiment(default_estimator, beeline_dataset, 'accuracy', params)
+    update_model_stats('beeline.json', params, results)

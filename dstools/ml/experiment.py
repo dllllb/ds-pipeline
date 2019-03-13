@@ -17,7 +17,7 @@ def update_model_stats(stats_file, params, results):
         json.dump(stats, f, indent=4)
 
 
-def run_experiment(est, dataset, scorer, params, stats_file):
+def run_experiment(est, dataset, scorer, params):
     import time
 
     start = time.time()
@@ -26,7 +26,7 @@ def run_experiment(est, dataset, scorer, params, stats_file):
         features, target = dataset(params)
         scores = cv_test(est(params), features, target, scorer, cv)
     exec_time = time.time() - start
-    update_model_stats(stats_file, params, {**scores, 'exec-time-sec': exec_time})
+    return {**scores, 'exec-time-sec': exec_time}
 
 
 def cv_test(est, features, target, scorer, cv):
