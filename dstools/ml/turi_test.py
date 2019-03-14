@@ -1,3 +1,4 @@
+import pytest
 from sklearn.datasets import load_iris
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_val_score
@@ -12,6 +13,8 @@ def roc_auc_avg_score(y_true, y_score):
 
 
 def test_turi_skearn():
+    pytest.importorskip('turicreate')
+
     from dstools.ml.turi import SklearnClassifier
 
     iris = load_iris()

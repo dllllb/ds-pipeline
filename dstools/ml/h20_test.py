@@ -1,3 +1,4 @@
+import pytest
 from sklearn.datasets import load_iris
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_val_score
@@ -12,6 +13,8 @@ def roc_auc_avg_score(y_true, y_score):
 
 
 def test_h2o_skearn():
+    pytest.importorskip('h2o')
+
     from dstools.ml.h2o import H2ODecorator
 
     iris = load_iris()
