@@ -13,7 +13,7 @@ class ModelEnsemble(BaseEstimator, ClassifierMixin):
         self.n_jobs = n_jobs
 
     def fit(self, X, y):
-        from sklearn.cross_validation import train_test_split
+        from sklearn.model_selection import train_test_split
 
         if self.ensemble_train_size == 1:
             X_train1, y_train1 = X, y
@@ -66,7 +66,7 @@ class ModelEnsembleRegressor(BaseEstimator, RegressorMixin):
         self.n_jobs = n_jobs
 
     def fit(self, X, y):
-        from sklearn.cross_validation import train_test_split
+        from sklearn.model_selection import train_test_split
 
         if self.ensemble_train_size == 1:
             X_train, y_train = X, y
@@ -144,7 +144,7 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         self.n_jobs = n_jobs
 
     def fit(self, X, y):
-        from sklearn.cross_validation import train_test_split
+        from sklearn.model_selection import train_test_split
 
         if self.ensemble_train_size == 1:
             X_train1, y_train1 = X, y
@@ -220,7 +220,7 @@ class KFoldStackingFullRegressor(BaseEstimator, RegressorMixin):
         self.intermediate_ests = None
 
     def fit(self, x, y):
-        from sklearn.cross_validation import KFold
+        from sklearn.model_selection import KFold
 
         folds = KFold(n=len(y), n_folds=self.n_folds, shuffle=True)
 
@@ -286,7 +286,7 @@ class KFoldStackingFull(BaseEstimator, ClassifierMixin):
         self.intermediate_ests = None
 
     def fit(self, X, y):
-        from sklearn.cross_validation import StratifiedKFold
+        from sklearn.model_selection import StratifiedKFold
 
         folds = StratifiedKFold(y, n_folds=self.n_folds, shuffle=True)
 
@@ -348,7 +348,7 @@ class KFoldStacking(BaseEstimator, ClassifierMixin):
         self.intermediate_ests = None
 
     def fit(self, X, y):
-        from sklearn.cross_validation import StratifiedKFold
+        from sklearn.model_selection import StratifiedKFold
 
         folds = StratifiedKFold(y, n_folds=self.n_folds, shuffle=True)
 
