@@ -14,8 +14,6 @@ def constant_value_imputer(value):
     return FunctionTransformer(lambda df: df.fillna(value), validate=False)
 
 
-
-
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
         field_names = list(map(six.u, field_names))
