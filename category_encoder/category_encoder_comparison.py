@@ -3,18 +3,18 @@ import pandas as pd
 import numpy as np
 
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import FunctionTransformer, Imputer
 from sklearn.ensemble import RandomForestClassifier
 
-from dstools.ml.experiment import run_experiment
-from dstools.ml.transformers import empirical_bayes_encoder, multi_class_empirical_bayes_encoder
-from dstools.ml.transformers import count_encoder
-from dstools.ml.transformers import empirical_bayes_vibrant_encoder, mc_empirical_bayes_vibrant_encoder
-from dstools.ml.transformers import yandex_mean_encoder, mc_yandex_mean_encoder
-from dstools.ml.transformers import noisy_mean_encoder, mc_noisy_mean_encoder
-from dstools.ml.transformers import kfold_target_mean_encoder
-from dstools.ml.transformers import mc_kfold_target_mean_encoder
+from dstools.ml.categorical import empirical_bayes_encoder, multi_class_empirical_bayes_encoder
+from dstools.ml.categorical import count_encoder
+from dstools.ml.categorical import empirical_bayes_vibrant_encoder, mc_empirical_bayes_vibrant_encoder
+from dstools.ml.categorical import yandex_mean_encoder, mc_yandex_mean_encoder
+from dstools.ml.categorical import noisy_mean_encoder, mc_noisy_mean_encoder
+from dstools.ml.categorical import kfold_target_mean_encoder
+from dstools.ml.categorical import mc_kfold_target_mean_encoder
 
 
 def default_estimator(params):
@@ -117,3 +117,36 @@ def beeline_experiment(overrides):
     params = {**titanic_params, **overrides}
     results = run_experiment(default_estimator, beeline_dataset, 'accuracy', params)
     update_model_stats('beeline.json', params, results)
+
+
+def update_model_stats(stats_file, params, results):
+    import json
+    import os.path
+
+    if os.path.exists(stats_file):
+        with open(stats_file, 'r') as f:
+            stats = json.load(f)
+    else:
+        stats = []
+
+    stats.append({**results, **params})
+
+    with open(stats_file, 'w') as f:
+        json.dump(stats, f, indent=4)
+
+
+def run_experiment(est, dataset, scorer, params):
+    import time
+
+    start = time.time()
+    if params['valid_type'] == 'cv':
+        cv = params['n_folds']
+        features, target = dataset(params)
+        scores = cv_test(est(params), features, target, scorer, cv)
+    exec_time = time.time() - start
+    return {**scores, 'exec-time-sec': exec_time}
+
+
+def cv_test(est, features, target, scorer, cv):
+    scores = cross_val_score(est, features, target, scoring=scorer, cv=cv)
+    return {'score-mean': scores.mean(), 'score-std': scores.std()}
