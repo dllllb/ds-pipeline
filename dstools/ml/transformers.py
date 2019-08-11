@@ -1,26 +1,13 @@
 from sklearn.preprocessing import FunctionTransformer
 import pandas as pd
-import six
 from functools import partial
-
-
-def df2dict():
-    from sklearn.preprocessing import FunctionTransformer
-    return FunctionTransformer(
-        lambda x: x.to_dict(orient='records'), validate=False)
-
-
-def constant_value_imputer(value):
-    return FunctionTransformer(lambda df: df.fillna(value), validate=False)
 
 
 def field_list_func(df, field_names, drop_mode=False, ignore_case=True):
     if ignore_case:
-        field_names = list(map(six.u, field_names))
         field_names = list(map(lambda e: e.lower(), field_names))
 
-        df_cols = list(map(six.u, df.columns))
-        df_cols = list(map(lambda e: e.lower(), df_cols))
+        df_cols = list(map(lambda e: e.lower(), df.columns))
 
         print(df_cols)
 
