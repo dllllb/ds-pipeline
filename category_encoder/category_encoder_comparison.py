@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import FunctionTransformer, Imputer
+from sklearn.preprocessing import FunctionTransformer
 from sklearn.ensemble import RandomForestClassifier
 
 from dstools.ml.categorical import empirical_bayes_encoder, multi_class_empirical_bayes_encoder
@@ -55,9 +56,10 @@ def default_estimator(params):
             transf = mc_kfold_target_mean_encoder()
         else:
             transf = kfold_target_mean_encoder()
+    else:
+        raise AssertionError(f'unkonwn category encoding: {category_encoding}')
 
-
-    transf = make_pipeline(transf, Imputer(strategy=params['imputation']))
+    transf = make_pipeline(transf, SimpleImputer(strategy=params['imputation']))
 
     est_type = params['est_type']
 
@@ -67,11 +69,13 @@ def default_estimator(params):
             max_features=params['max_features'],
             max_depth=params['max_depth'],
             random_state=1)
+    else:
+        raise AssertionError(f'unkonwn estimator: {est_type}')
 
     return make_pipeline(transf, est)
 
 
-def titanic_dataset(params):
+def titanic_dataset(_):
     import os
     df = pd.read_csv(f'{os.path.dirname(__file__)}/titanic.csv')
     df = df.replace(r'\s+', np.nan, regex=True)
@@ -96,7 +100,7 @@ def titanic_experiment(overrides):
     update_model_stats('titanic.json', params, results)
 
 
-def beeline_dataset(params):
+def beeline_dataset(_):
     df = pd.read_csv(f'{os.path.dirname(__file__)}/beeline-ss20.csv.gz')
     features = df.drop('y', axis=1)
     return features, df.y
