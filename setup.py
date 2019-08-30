@@ -9,5 +9,5 @@ setup(
     author='Dmitri Babaev',
     author_email='dmitri.babaev@gmail.com',
     packages=['ds-tools'],
-    requires=['pandas', 'six', 'numpy', 'scikit-learn', ],
+    requires=['pandas>=0.20', 'numpy>=1.14', 'scikit-learn>=0.19', ],
 )
