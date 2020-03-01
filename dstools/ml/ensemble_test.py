@@ -14,7 +14,7 @@ from sklearn.tree import DecisionTreeRegressor
 
 from dstools.ml.ensemble import ModelEnsemble, ModelEnsembleRegressor, ModelEnsembleMean
 from dstools.ml.ensemble import OneVsRestEnsemble, ModelEnsembleMeanRegressor, KFoldStackingFullRegressor
-from dstools.ml.ensemble import KFoldStackingFull, KFoldStacking, ForcedMultilabelModel, PerGroupRegressor
+from dstools.ml.ensemble import KFoldStackingFull, KFoldStacking, ForcedMultilabelModel
 
 
 def roc_auc_avg_score(y_true, y_score):
@@ -162,20 +162,5 @@ def test_forced_multilabel_model():
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
 
     scores = cross_val_score(estimator=est, X=iris.data, y=iris.target, cv=3, scoring=scorer)
-
-    print(scores.mean(), scores.std())
-
-
-def test_per_group_regressor(self):
-    boston = load_boston()
-    features = pd.DataFrame(boston.data, columns=boston.feature_names)
-    features['group'] = (features.AGE % 3).astype(int)
-    labels = pd.Series(boston.target)
-    est = PerGroupRegressor(
-        estimator=LinearRegression(),
-        split_condition='group',
-    )
-
-    scores = cross_val_score(estimator=est, X=features, y=labels, cv=3)
 
     print(scores.mean(), scores.std())
