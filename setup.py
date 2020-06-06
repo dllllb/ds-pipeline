@@ -1,12 +1,24 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+import setuptools
 
-setup(
-    name=''ds-tools',
-    version='0.3.1',
-    description='Data Science Tools for Spark and scikit-learn',
-    author='Dmitri Babaev',
-    author_email='dmitri.babaev@gmail.com',
-    install_requires=['pandas>=0.20', 'numpy>=1.14', 'scikit-learn>=0.19', ],
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+    
+setuptools.setup(
+    name="ds-pipeline",
+    version="0.3.1",
+    author="Dmitri Babaev",
+    author_email="dmitri.babaev@gmail.com",
+    description="Data Science oriented tools, mostly in form of scikit-learn transformers and estimators",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/dllllb/ds-pipeline",
+    packages=setuptools.find_packages(),
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires='>=3.6',
 )
