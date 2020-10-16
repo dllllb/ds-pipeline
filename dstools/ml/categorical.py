@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import KFold
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 from functools import partial
