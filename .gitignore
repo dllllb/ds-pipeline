@@ -6,3 +6,5 @@ demo/spark-warehouse/
 .pytest_cache
 .DS_Store
 .vscode
+*.egg-info
+pyproject.toml
