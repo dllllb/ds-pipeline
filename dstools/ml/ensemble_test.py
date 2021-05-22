@@ -103,7 +103,7 @@ def test_model_ensemble_mean_regressor():
     print(scores.mean(), scores.std())
 
 
-def test_kfold_stacking_full_regressor(self):
+def test_kfold_stacking_full_regressor():
     boston = load_boston()
     est = KFoldStackingFullRegressor(
         final_estimator=RandomForestRegressor(n_estimators=50, random_state=1),
