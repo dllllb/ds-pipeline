@@ -7,4 +7,5 @@ demo/spark-warehouse/
 .DS_Store
 .vscode
 *.egg-info
+build
 pyproject.toml

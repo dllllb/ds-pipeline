@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 pylint = "*"
-jupyter = "*"
+notebook = "*"
 
 [packages]
 pandas = "*"
@@ -17,4 +17,4 @@ matplotlib = ">=3"
 ds-pipeline = {editable = true, path = "."}
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"
