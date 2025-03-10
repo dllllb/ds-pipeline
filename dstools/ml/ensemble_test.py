@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, fetch_california_housing
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import roc_auc_score, make_scorer
 from sklearn.preprocessing import label_binarize
@@ -17,7 +17,7 @@ from dstools.ml.ensemble import OneVsRestEnsemble, ModelEnsembleMeanRegressor, K
 from dstools.ml.ensemble import KFoldStackingFull, KFoldStacking, ForcedMultilabelModel
 
 
-def roc_auc_avg_score(y_true, y_score):
+def roc_auc_avg_score(y_true, y_score, **kwargs):
     y_bin = label_binarize(y_true, classes=sorted(set(y_true)))
     return roc_auc_score(y_bin, y_score)
 
@@ -41,7 +41,7 @@ def test_model_ensemble():
 
 
 def test_model_ensemble_regressor():
-    boston = load_boston()
+    california = fetch_california_housing()
 
     est = ModelEnsembleRegressor(
         intermediate_estimators=[
@@ -51,7 +51,7 @@ def test_model_ensemble_regressor():
         assembly_estimator=LinearRegression()
     )
 
-    scores = cross_val_score(estimator=est, X=boston.data, y=boston.target, cv=3)
+    scores = cross_val_score(estimator=est, X=california.data, y=california.target, cv=3)
 
     print(scores.mean(), scores.std())
 
@@ -84,13 +84,13 @@ def test_one_vs_rest_ensemble():
 
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
 
-    scores = cross_val_score(estimator=est, X=iris.data, y=iris.target, cv=3, scoring=scorer)
+    scores = cross_val_score(estimator=est, X=iris.data, y=iris.target, cv=3, scoring=scorer, error_score='raise')
 
     print(scores.mean(), scores.std())
 
 
 def test_model_ensemble_mean_regressor():
-    boston = load_boston()
+    california = fetch_california_housing()
     est = ModelEnsembleMeanRegressor(
         intermediate_estimators=[
             LinearRegression(),
@@ -98,23 +98,23 @@ def test_model_ensemble_mean_regressor():
         ]
     )
 
-    scores = cross_val_score(estimator=est, X=boston.data, y=boston.target, cv=3)
+    scores = cross_val_score(estimator=est, X=california.data, y=california.target, cv=3)
 
     print(scores.mean(), scores.std())
 
 
 def test_kfold_stacking_full_regressor():
-    boston = load_boston()
+    california = fetch_california_housing()
     est = KFoldStackingFullRegressor(
         final_estimator=RandomForestRegressor(n_estimators=50, random_state=1),
         intermediate_estimators=[
             Ridge(random_state=1),
             DecisionTreeRegressor()
         ],
-        n_folds=2
+        n_splits=2
     )
 
-    scores = cross_val_score(estimator=est, X=boston.data, y=boston.target, cv=3)
+    scores = cross_val_score(estimator=est, X=california.data, y=california.target, cv=3)
 
     print(scores.mean(), scores.std())
 
@@ -127,7 +127,7 @@ def test_kfold_stacking_full():
             LogisticRegression(random_state=1),
             GaussianNB()
         ],
-        n_folds=2
+        n_splits=2
     )
 
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
@@ -145,7 +145,7 @@ def test_kfold_stacking():
             LogisticRegression(random_state=1),
             GaussianNB()
         ],
-        n_folds=2
+        n_splits=2
     )
 
     scorer = make_scorer(roc_auc_avg_score, needs_proba=True)
