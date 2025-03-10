@@ -34,19 +34,15 @@ packages = ["dstools"]
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.uv]
-python = "3.10"
-
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
+python_files = ["*_test.py"]
 addopts = "-ra -q"
 
 [tool.ruff]
 line-length = 120
 target-version = "py310"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "pylint>=2.17.0",
