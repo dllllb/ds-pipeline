@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from joblib import Parallel
 from sklearn.base import clone as sk_clone
+from sklearn.exceptions import NotFittedError
 
 
 class ModelEnsemble(BaseEstimator, ClassifierMixin):
@@ -142,6 +143,7 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         self.intermediate_estimators = intermediate_estimators
         self.ensemble_train_size = ensemble_train_size
         self.n_jobs = n_jobs
+        self.fitted_estimators = None
 
     def fit(self, X, y):
         from sklearn.model_selection import train_test_split
@@ -156,25 +158,28 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         from sklearn.preprocessing import LabelBinarizer
         labels = LabelBinarizer().fit_transform(y_train1).T
 
-        Parallel(n_jobs=self.n_jobs)(
+        # Fit and store the intermediate estimators
+        self.fitted_estimators = Parallel(n_jobs=self.n_jobs)(
             (
-                (fit_est, [est, X_train1, labels_bin], {})
+                (fit_est_clone, [est, X_train1, labels_bin], {})
                 for est, labels_bin in zip(self.intermediate_estimators, labels)
             )
         )
 
         probas = self.intermediate_predict_proba(X_train2)
-
         self.assembly_estimator.fit(probas, y_train2)
 
         return self
 
     def intermediate_predict_proba(self, X):
         def predict_proba_est_bin(estimator, features):
-            return estimator.predict_proba(features).T[1]
+            return estimator.predict_proba(features)[:, 1]
+
+        if self.fitted_estimators is None:
+            raise NotFittedError("Call fit before prediction")
 
         probas = np.array(Parallel(n_jobs=self.n_jobs)(
-            ((predict_proba_est_bin, [est, X], {}) for est in self.intermediate_estimators)
+            ((predict_proba_est_bin, [est, X], {}) for est in self.fitted_estimators)
         )).T
         return probas
 
@@ -210,11 +215,11 @@ class ModelEnsembleMeanRegressor(BaseEstimator, RegressorMixin):
 
 
 class KFoldStackingFullRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_folds=3):
+    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_splits=3):
         self.final_estimator = final_estimator
         self.intermediate_estimators = intermediate_estimators
         self.n_jobs = n_jobs
-        self.n_folds = n_folds
+        self.n_splits = n_splits
 
         self.final_est = None
         self.intermediate_ests = None
@@ -222,9 +227,8 @@ class KFoldStackingFullRegressor(BaseEstimator, RegressorMixin):
     def fit(self, x, y):
         from sklearn.model_selection import KFold
 
-        folds = KFold(n=len(y), n_folds=self.n_folds, shuffle=True)
-
-        train_folds, test_folds = zip(*folds)
+        folds = KFold(n_splits=self.n_splits, shuffle=True)
+        train_folds, test_folds = zip(*folds.split(x))
 
         intermediate_ests = Parallel(n_jobs=self.n_jobs)(
             (
@@ -276,11 +280,11 @@ def kfold_predict_est(estimators, x, folds):
 
 
 class KFoldStackingFull(BaseEstimator, ClassifierMixin):
-    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_folds=3):
+    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_splits=3):
         self.final_estimator = final_estimator
         self.intermediate_estimators = intermediate_estimators
         self.n_jobs = n_jobs
-        self.n_folds = n_folds
+        self.n_splits = n_splits
 
         self.final_est = None
         self.intermediate_ests = None
@@ -288,9 +292,8 @@ class KFoldStackingFull(BaseEstimator, ClassifierMixin):
     def fit(self, X, y):
         from sklearn.model_selection import StratifiedKFold
 
-        folds = StratifiedKFold(y, n_folds=self.n_folds, shuffle=True)
-
-        train_folds, test_folds = zip(*folds)
+        folds = StratifiedKFold(n_splits=self.n_splits, shuffle=True)
+        train_folds, test_folds = zip(*folds.split(X, y))
 
         intermediate_ests = Parallel(n_jobs=self.n_jobs)(
             (
@@ -338,11 +341,11 @@ def kfold_predict_proba_est(estimators, x, folds):
 
 
 class KFoldStacking(BaseEstimator, ClassifierMixin):
-    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_folds=3):
+    def __init__(self, final_estimator, intermediate_estimators, n_jobs=1, n_splits=3):
         self.final_estimator = final_estimator
         self.intermediate_estimators = intermediate_estimators
         self.n_jobs = n_jobs
-        self.n_folds = n_folds
+        self.n_splits = n_splits
 
         self.final_est = None
         self.intermediate_ests = None
@@ -350,9 +353,8 @@ class KFoldStacking(BaseEstimator, ClassifierMixin):
     def fit(self, X, y):
         from sklearn.model_selection import StratifiedKFold
 
-        folds = StratifiedKFold(y, n_folds=self.n_folds, shuffle=True)
-
-        train_folds, test_folds = zip(*folds)
+        folds = StratifiedKFold(n_splits=self.n_splits, shuffle=True)
+        train_folds, test_folds = zip(*folds.split(X, y))
 
         self.intermediate_ests = Parallel(n_jobs=self.n_jobs)(
             (
