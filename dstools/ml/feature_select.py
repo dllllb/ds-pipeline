@@ -25,7 +25,7 @@ class FeatureGroupSelector(BaseEstimator, TransformerMixin):
         not_clustered = f_weights.index[~f_weights.index.isin(f_clusters.index)]
         nc_cluster_names = ['nc' + str(n) for n in range(len(not_clustered))]
         not_clustered_clusters = pd.Series(nc_cluster_names, index=not_clustered, name='cluster')
-        f_clusters_full = f_clusters.astype(str).append(not_clustered_clusters)
+        f_clusters_full = pd.concat([f_clusters.astype(str), not_clustered_clusters])
 
         fic = pd.DataFrame({'cluster': f_clusters_full, 'weight': f_weights})
         cluster_means = fic.groupby('cluster')['weight'].mean().rename('mean_weight')
