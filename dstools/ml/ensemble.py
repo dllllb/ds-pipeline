@@ -143,7 +143,6 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         self.intermediate_estimators = intermediate_estimators
         self.ensemble_train_size = ensemble_train_size
         self.n_jobs = n_jobs
-        self.fitted_estimators = None
 
     def fit(self, X, y):
         from sklearn.model_selection import train_test_split
@@ -158,8 +157,8 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         from sklearn.preprocessing import LabelBinarizer
         labels = LabelBinarizer().fit_transform(y_train1).T
 
-        # Fit and store the intermediate estimators
-        self.fitted_estimators = Parallel(n_jobs=self.n_jobs)(
+        # Clone and fit the intermediate estimators
+        self.intermediate_estimators = Parallel(n_jobs=self.n_jobs)(
             (
                 (fit_est_clone, [est, X_train1, labels_bin], {})
                 for est, labels_bin in zip(self.intermediate_estimators, labels)
@@ -175,11 +174,8 @@ class OneVsRestEnsemble(BaseEstimator, ClassifierMixin):
         def predict_proba_est_bin(estimator, features):
             return estimator.predict_proba(features)[:, 1]
 
-        if self.fitted_estimators is None:
-            raise NotFittedError("Call fit before prediction")
-
         probas = np.array(Parallel(n_jobs=self.n_jobs)(
-            ((predict_proba_est_bin, [est, X], {}) for est in self.fitted_estimators)
+            ((predict_proba_est_bin, [est, X], {}) for est in self.intermediate_estimators)
         )).T
         return probas
 
